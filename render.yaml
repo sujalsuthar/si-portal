@@ -1,0 +1,42 @@
+# Render Blueprint — SI Portal backend + Postgres
+# Deploy: Render Dashboard → New → Blueprint → connect this repo
+databases:
+  - name: si-portal-db
+    databaseName: si_portal
+    user: si_portal
+    plan: free
+
+services:
+  - type: web
+    name: si-portal-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: si-portal-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: RECEIPT_HMAC_SECRET
+        generateValue: true
+      - key: BACKUP_ENCRYPTION_KEY
+        generateValue: true
+      - key: SEED_ON_START
+        value: "true"
+      - key: SEED_ADMIN_EMAIL
+        value: admin@siportal.edu
+      - key: SEED_ADMIN_PASSWORD
+        value: ChangeMe123!
+      - key: WEB_URL
+        sync: false
+      - key: APP_URL
+        sync: false

@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-samp_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-samp_password}
+      POSTGRES_DB: ${POSTGRES_DB:-samp_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-samp_user} -d ${POSTGRES_DB:-samp_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      APP_URL: ${APP_URL:-http://localhost:4000}
+      WEB_URL: ${WEB_URL:-http://localhost:8080}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-samp_user}:${POSTGRES_PASSWORD:-samp_password}@postgres:5432/${POSTGRES_DB:-samp_db}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in .env}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      RECEIPT_HMAC_SECRET: ${RECEIPT_HMAC_SECRET:-}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
+      BACKUP_OFFSITE_DIR: ${BACKUP_OFFSITE_DIR:-}
+      BACKUP_SCHEDULE_CRON: ${BACKUP_SCHEDULE_CRON:-59 23 * * *}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@siportal.edu}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
+      SEED_ON_START: ${SEED_ON_START:-false}
+      UPLOAD_DIR: uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-"SI Portal <no-reply@siportal.edu>"}
+    volumes:
+      - backend_uploads:/app/uploads
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_data:
+  backend_uploads:

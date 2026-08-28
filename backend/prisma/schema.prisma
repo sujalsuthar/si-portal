@@ -1,0 +1,1705 @@
+// Student Academic Management Portal — Data Model
+// Covers Phases 1-7 of the product requirements document.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum RoleName {
+  SUPER_ADMIN
+  MANAGEMENT
+  ACADEMIC_ADMIN
+  FACULTY
+  ACCOUNTS
+  STUDENT
+  PARENT
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum BatchStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SessionType {
+  LECTURE
+  PRACTICE
+  EXAM_THEORY
+  EXAM_PRACTICAL
+  TASK
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum AttendanceContext {
+  SESSION
+  EXAM
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
+  EXCUSED
+}
+
+enum QuestionType {
+  MCQ
+  LONG_ANSWER
+}
+
+enum ExamStatus {
+  DRAFT
+  SCHEDULED
+  COMPLETED
+  GRADED
+  REJECTED
+  PUBLISHED
+}
+
+enum GradeStatus {
+  DRAFT
+  PENDING_APPROVAL
+  REJECTED
+  PUBLISHED
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  LATE
+  EVALUATED
+}
+
+enum BehaviourCategory {
+  DISCIPLINE
+  PARTICIPATION
+  TEAMWORK
+  LEADERSHIP
+  RESPONSIBILITY
+  PROFESSIONALISM
+}
+
+enum PointType {
+  POSITIVE
+  NEGATIVE
+}
+
+enum PointSource {
+  BEHAVIOUR
+  PRESENTATION
+  TASK
+  MANUAL
+}
+
+enum PresentationStatus {
+  PLANNED
+  COMPLETED
+  CANCELLED
+}
+
+enum CertificationStatus {
+  RECOMMENDED
+  IN_PREPARATION
+  SCHEDULED
+  PASSED
+  FAILED
+  EXPIRED
+}
+
+enum CertificateStatus {
+  VALID
+  REVOKED
+  EXPIRED
+}
+
+enum InterventionSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum InterventionStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum InterventionTrigger {
+  LOW_ATTENDANCE
+  FAILING_GRADES
+  DECLINING_PERFORMANCE
+  OVERDUE_TASKS
+  BEHAVIOUR_CONCERN
+  MISSED_EXAMS
+  OTHER
+}
+
+enum NotificationCategory {
+  ATTENDANCE
+  EXAM
+  TASK
+  GRADE
+  PRESENTATION
+  CERTIFICATION
+  CERTIFICATE
+  BATCH_TRANSFER
+  BEHAVIOUR
+  FEE
+  ANNOUNCEMENT
+  GENERAL
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum AwardCategory {
+  TOP_PERFORMER
+  MOST_IMPROVED
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String
+  role               RoleName
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Multi-factor authentication (TOTP) — available to and enforceable for every role.
+  mfaEnabled          Boolean   @default(false)
+  mustSetupMfa        Boolean   @default(false)
+  mfaSecret           String?
+  mfaBackupCodeHashes String[]  @default([])
+  mfaEnabledAt        DateTime?
+
+  // Login lockout after repeated failed attempts.
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  student Student?
+  faculty Faculty?
+  parent  ParentGuardian?
+
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  refreshTokens           RefreshToken[]
+  auditLogsAsActor        AuditLog[]      @relation("AuditActor")
+  actionRequestsRaised    ActionRequest[] @relation("ActionRequester")
+  actionRequestsApproved  ActionRequest[] @relation("ActionApprover")
+  feedPosts               FeedPost[]
+  dashboardPreference     DashboardPreference?
+  calendarEvents          CalendarEvent[]
+
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  // Shared by every token descended from the same login, via rotation. Reuse of an already-revoked
+  // token revokes the whole family — the standard mitigation for a stolen-and-replayed refresh token.
+  familyId  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+// ---------------------------------------------------------------------------
+// People
+// ---------------------------------------------------------------------------
+
+model Course {
+  id            String   @id @default(cuid())
+  name          String
+  code          String   @unique
+  description   String?
+  durationWeeks Int?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  batches        Batch[]
+  students       Student[]
+  syllabusTopics SyllabusTopic[]
+  questions      Question[]
+  exams          Exam[]
+  certCatalog    CertificationCatalog[]
+  feeStructures  FeeStructure[]
+}
+
+model Faculty {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeCode String    @unique
+  firstName    String
+  lastName     String
+  photoUrl     String?
+  phone        String?
+  department   String?
+  designation  String?
+  joiningDate  DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  batchAssignments       BatchFacultyAssignment[]
+  mentoredStudents       Student[]                @relation("MentorFaculty")
+  sessions               Session[]
+  timetableSlots         TimetableSlot[]
+  evaluatedTasks         TaskSubmission[]         @relation("TaskEvaluator")
+  evaluatedPresentations Presentation[]           @relation("PresentationEvaluator")
+  interventionCases      InterventionCase[]       @relation("AssignedFaculty")
+  internMentorships      InternMentorHistory[]
+  internRatingsGiven     InternRating[]
+  internLeaveApprovals   InternLeaveRequest[]     @relation("LeaveApprover")
+  internManagerFor       InstitutionProfile[]
+
+  @@index([department])
+}
+
+model ParentGuardian {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName String
+  lastName  String
+  phone     String?
+  // Expanded contact/profile fields (SI Portal 4.0 issue log — Community → Parents).
+  altPhone          String?
+  contactEmail      String?
+  currentAddress    String?
+  permanentAddress  String?
+  occupation        String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students StudentParent[]
+}
+
+model Student {
+  id                    String        @id @default(cuid())
+  userId                String        @unique
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentCode           String        @unique
+  firstName             String
+  lastName              String
+  photoUrl              String?
+  dateOfBirth           DateTime?
+  gender                String?
+  phone                 String?
+  address               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  // Quick-reference parent contact shown directly on the student profile (SI Portal 4.0), distinct
+  // from a full ParentGuardian portal account which may not always exist.
+  parentName            String?
+  parentMobile          String?
+  parentAltMobile       String?
+  courseId              String?
+  course                Course?       @relation(fields: [courseId], references: [id])
+  currentBatchId        String?
+  currentBatch          Batch?        @relation("CurrentBatch", fields: [currentBatchId], references: [id])
+  mentorFacultyId       String?
+  mentorFaculty         Faculty?      @relation("MentorFaculty", fields: [mentorFacultyId], references: [id])
+  joiningDate           DateTime      @default(now())
+  status                StudentStatus @default(ACTIVE)
+  archivedAt            DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Internship lifecycle (SAMP 2.0). null internStatus = never promoted to intern.
+  internStatus       InternStatus?
+  internPromotedAt   DateTime?
+  internFrozen       Boolean       @default(false)
+  internFrozenReason String?
+  internFrozenAt     DateTime?
+
+  // Data protection (UR-DPP-02/03/04): true blocks new attendance/coursework processing until
+  // a fresh DATA_PROCESSING consent is captured. Set on explicit refusal or consent withdrawal.
+  dataProcessingSuspended Boolean @default(false)
+
+  parents                StudentParent[]
+  batchTransfers         BatchTransfer[]
+  attendances            Attendance[]
+  taskAssignments        TaskAssignment[]
+  taskSubmissions        TaskSubmission[]
+  grades                 Grade[]
+  behaviourEvents        BehaviourEvent[]
+  pointTransactions      PointTransaction[]
+  presentations          Presentation[]
+  selfAssessments        SelfAssessment[]
+  certifications         Certification[]
+  certificates           Certificate[]
+  interventionCases      InterventionCase[]
+  awards                 StudentOfMonthAward[]
+  compositeSnapshots     StudentCompositeSnapshot[]
+  internRatings          InternRating[]
+  internMentorHistory    InternMentorHistory[]
+  internStateChanges     InternStateChange[]
+  internLeaveRequests    InternLeaveRequest[]
+  feeAccount             FeeAccount?
+  projectMemberships     ProjectMember[]
+  ledProjectGroups       ProjectGroup[]
+  actionRequestsAsTarget ActionRequest[]       @relation("ActionTargetStudent")
+  consentRecords         ConsentRecord[]
+  examAnswers            StudentAnswer[]
+  leaveRecords           LeaveRecord[]
+  dataExports            DataExportRecord[]
+
+  @@index([currentBatchId])
+  @@index([courseId])
+  @@index([status])
+  @@index([internStatus])
+}
+
+model StudentParent {
+  id           String         @id @default(cuid())
+  studentId    String
+  student      Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parentId     String
+  parent       ParentGuardian @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  relationship String?
+  createdAt    DateTime       @default(now())
+
+  @@unique([studentId, parentId])
+}
+
+// ---------------------------------------------------------------------------
+// Batches
+// ---------------------------------------------------------------------------
+
+model Batch {
+  id        String      @id @default(cuid())
+  name      String
+  code      String      @unique
+  courseId  String
+  course    Course      @relation(fields: [courseId], references: [id])
+  startDate DateTime
+  endDate   DateTime?
+  capacity  Int?
+  status    BatchStatus @default(ACTIVE)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  students           Student[]                @relation("CurrentBatch")
+  facultyAssignments BatchFacultyAssignment[]
+  timetableSlots     TimetableSlot[]
+  transfersIn        BatchTransfer[]          @relation("ToBatch")
+  transfersOut       BatchTransfer[]          @relation("FromBatch")
+  sessions           Session[]
+  exams              Exam[]
+  tasks              Task[]
+  presentations      Presentation[]
+  certificates       Certificate[]
+  awards             StudentOfMonthAward[]
+  projects           Project[]
+  feedPosts          FeedPost[]
+
+  @@index([courseId])
+  @@index([status])
+}
+
+model BatchFacultyAssignment {
+  id         String   @id @default(cuid())
+  batchId    String
+  batch      Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  facultyId  String
+  faculty    Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  subject    String?
+  assignedAt DateTime @default(now())
+
+  @@unique([batchId, facultyId, subject])
+}
+
+model TimetableSlot {
+  id        String   @id @default(cuid())
+  batchId   String
+  batch     Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int // 0=Sunday .. 6=Saturday
+  startTime   String // HH:mm
+  endTime     String // HH:mm
+  subject     String
+  facultyId   String?
+  faculty     Faculty? @relation(fields: [facultyId], references: [id])
+  room        String?
+  // Online meeting link — only meaningful for the Sunday (dayOfWeek=0) online-session slot.
+  meetingLink String?
+  createdAt   DateTime @default(now())
+
+  @@index([batchId])
+}
+
+model BatchTransfer {
+  id            String         @id @default(cuid())
+  studentId     String
+  student       Student        @relation(fields: [studentId], references: [id])
+  fromBatchId   String?
+  fromBatch     Batch?         @relation("FromBatch", fields: [fromBatchId], references: [id])
+  toBatchId     String
+  toBatch       Batch          @relation("ToBatch", fields: [toBatchId], references: [id])
+  reason        String
+  effectiveDate DateTime
+  status        TransferStatus @default(PENDING)
+  requestedById String
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime       @default(now())
+
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Sessions & Attendance
+// ---------------------------------------------------------------------------
+
+model SyllabusTopic {
+  id          String  @id @default(cuid())
+  courseId    String
+  course      Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  sequence    Int
+  description String?
+
+  sessions Session[]
+
+  @@index([courseId])
+}
+
+model Session {
+  id              String         @id @default(cuid())
+  batchId         String
+  batch           Batch          @relation(fields: [batchId], references: [id])
+  facultyId       String
+  faculty         Faculty        @relation(fields: [facultyId], references: [id])
+  topic           String
+  description     String
+  sessionDate     DateTime
+  durationMinutes Int
+  sessionType     SessionType    @default(LECTURE)
+  notes           String?
+  resourceUrl     String?
+  syllabusTopicId String?
+  syllabusTopic   SyllabusTopic? @relation(fields: [syllabusTopicId], references: [id])
+  status          SessionStatus  @default(SCHEDULED)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  attendances Attendance[]
+  tasks       Task[]
+
+  @@index([batchId, sessionDate])
+  @@index([facultyId])
+}
+
+model Attendance {
+  id               String            @id @default(cuid())
+  studentId        String
+  student          Student           @relation(fields: [studentId], references: [id])
+  sessionId        String?
+  session          Session?          @relation(fields: [sessionId], references: [id])
+  examId           String?
+  exam             Exam?             @relation(fields: [examId], references: [id])
+  context          AttendanceContext
+  status           AttendanceStatus
+  remarks          String?
+  markedById       String
+  markedAt         DateTime          @default(now())
+  isCorrected      Boolean           @default(false)
+  originalStatus   AttendanceStatus?
+  correctedById    String?
+  correctedAt      DateTime?
+  correctionReason String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([studentId])
+  @@index([sessionId])
+  @@index([examId])
+}
+
+enum LeaveRecordStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// An approved leave neutralises the attendance-percentage denominator for its date range —
+/// sessions falling inside an approved leave are excluded from both the numerator and denominator.
+model LeaveRecord {
+  id           String            @id @default(cuid())
+  studentId    String
+  student      Student           @relation(fields: [studentId], references: [id])
+  startDate    DateTime
+  endDate      DateTime
+  reason       String
+  status       LeaveRecordStatus @default(PENDING)
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime          @default(now())
+
+  @@index([studentId])
+}
+
+/// A biometric scan that could not be matched to a student — held for manual staff resolution.
+/// Independent of any specific terminal hardware; this is the software side of the exception queue.
+model AttendanceExceptionRecord {
+  id           String    @id @default(cuid())
+  deviceId     String?
+  rawScanId    String?
+  scannedAt    DateTime  @default(now())
+  note         String?
+  resolvedById String?
+  resolvedAt   DateTime?
+  resolvedAsStudentId String?
+  createdAt    DateTime  @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Question Bank & Exams
+// ---------------------------------------------------------------------------
+
+model Question {
+  id            String       @id @default(cuid())
+  courseId      String?
+  course        Course?      @relation(fields: [courseId], references: [id])
+  subject       String?
+  topic         String?
+  questionText  String
+  questionType  QuestionType
+  options       Json?
+  correctAnswer String?
+  marks         Int          @default(1)
+  // Long-answer marking criteria: array of {criterion, maxMarks}. Null for MCQ questions.
+  rubric        Json?
+  tags          String[]     @default([])
+  createdById   String
+  isActive      Boolean      @default(true)
+  usageCount    Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  examQuestions  ExamQuestion[]
+  studentAnswers StudentAnswer[]
+
+  @@index([subject, topic])
+}
+
+model Exam {
+  id              String     @id @default(cuid())
+  title           String
+  courseId        String?
+  course          Course?    @relation(fields: [courseId], references: [id])
+  batchId         String
+  batch           Batch      @relation(fields: [batchId], references: [id])
+  subject         String
+  examDate        DateTime?
+  durationMinutes Int?
+  totalMarks      Int        @default(0)
+  passMarks       Int?
+  status          ExamStatus @default(DRAFT)
+  createdById     String
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  papers         Paper[]
+  grades         Grade[]
+  attendances    Attendance[]
+  studentAnswers StudentAnswer[]
+
+  @@index([batchId])
+  @@index([status])
+}
+
+/// A named, sequenced paper within an exam — an exam may carry more than one (e.g. Theory + Practical).
+model Paper {
+  id         String   @id @default(cuid())
+  examId     String
+  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  name       String
+  sequence   Int
+  totalMarks Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  examQuestions ExamQuestion[]
+
+  @@unique([examId, sequence])
+}
+
+model ExamQuestion {
+  id         String   @id @default(cuid())
+  paperId    String
+  paper      Paper    @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  sequence   Int
+  marks      Int
+
+  @@unique([paperId, questionId])
+}
+
+/// A student's captured answer to one exam question. MCQ answers are auto-marked against the
+/// stored key on submission; long-answer answers are marked later against the question's rubric.
+model StudentAnswer {
+  id             String    @id @default(cuid())
+  examId         String
+  exam           Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question  @relation(fields: [questionId], references: [id])
+  studentId      String
+  student        Student   @relation(fields: [studentId], references: [id])
+  selectedOption String?
+  answerText     String?
+  isCorrect      Boolean?
+  marksAwarded   Float?
+  rubricScores   Json?
+  submittedAt    DateTime  @default(now())
+  gradedById     String?
+  gradedAt       DateTime?
+
+  @@unique([examId, questionId, studentId])
+  @@index([studentId])
+}
+
+model Grade {
+  id            String      @id @default(cuid())
+  examId        String
+  exam          Exam        @relation(fields: [examId], references: [id])
+  studentId     String
+  student       Student     @relation(fields: [studentId], references: [id])
+  marksObtained Float
+  percentage    Float
+  gradeLetter   String?
+  passed        Boolean
+  remarks       String?
+  status        GradeStatus @default(DRAFT)
+  rejectionReason String?
+  enteredById   String
+  enteredAt     DateTime    @default(now())
+  publishedAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([examId, studentId])
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+model Task {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  instructions      String?
+  batchId           String?
+  batch             Batch?   @relation(fields: [batchId], references: [id])
+  sessionId         String?
+  session           Session? @relation(fields: [sessionId], references: [id])
+  createdById       String
+  dueDate           DateTime
+  points            Int      @default(0)
+  attachmentUrl     String?
+  // Late-submission handling: no deduction within gracePeriodHours after dueDate, then
+  // lateDeductionRate fraction of points lost per late day (clamped to 0 at the floor).
+  gracePeriodHours  Int?
+  lateDeductionRate Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  assignments TaskAssignment[]
+  submissions TaskSubmission[]
+
+  @@index([batchId])
+}
+
+model TaskAssignment {
+  id        String  @id @default(cuid())
+  taskId    String
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
+
+  @@unique([taskId, studentId])
+}
+
+model TaskSubmission {
+  id               String     @id @default(cuid())
+  taskId           String
+  task             Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  studentId        String
+  student          Student    @relation(fields: [studentId], references: [id])
+  submittedAt      DateTime?
+  attachmentUrl    String?
+  submissionText   String?
+  status           TaskStatus @default(NOT_STARTED)
+  pointsAwarded    Float?
+  feedback         String?
+  evaluatedById    String?
+  evaluatorFaculty Faculty?   @relation("TaskEvaluator", fields: [evaluatedById], references: [id])
+  evaluatedAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  versions TaskSubmissionVersion[]
+
+  @@unique([taskId, studentId])
+  @@index([studentId])
+  @@index([status])
+}
+
+/// Preserves prior submission content when a student resubmits, instead of overwriting it.
+model TaskSubmissionVersion {
+  id             String         @id @default(cuid())
+  submissionId   String
+  submission     TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  attachmentUrl  String?
+  submissionText String?
+  createdAt      DateTime       @default(now())
+
+  @@index([submissionId])
+}
+
+// ---------------------------------------------------------------------------
+// Behaviour & Points
+// ---------------------------------------------------------------------------
+
+model BehaviourEvent {
+  id             String            @id @default(cuid())
+  studentId      String
+  student        Student           @relation(fields: [studentId], references: [id])
+  category       BehaviourCategory
+  type           PointType
+  points         Int
+  reason         String
+  evidenceUrl    String?
+  recordedById   String
+  authorizedById String?
+  eventDate      DateTime          @default(now())
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([studentId])
+  @@index([category])
+}
+
+model PointTransaction {
+  id        String      @id @default(cuid())
+  studentId String
+  student   Student     @relation(fields: [studentId], references: [id])
+  source    PointSource
+  sourceId  String?
+  points    Int
+  reason    String?
+  createdAt DateTime    @default(now())
+
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Presentations
+// ---------------------------------------------------------------------------
+
+model Presentation {
+  id                  String             @id @default(cuid())
+  studentId           String
+  student             Student            @relation(fields: [studentId], references: [id])
+  batchId             String?
+  batch               Batch?             @relation(fields: [batchId], references: [id])
+  topic               String
+  scheduledDate       DateTime
+  durationMinutes     Int?
+  evaluatorFacultyId  String?
+  evaluatorFaculty    Faculty?           @relation("PresentationEvaluator", fields: [evaluatorFacultyId], references: [id])
+  status              PresentationStatus @default(PLANNED)
+  contentScore        Int?
+  communicationScore  Int?
+  confidenceScore     Int?
+  technicalScore      Int?
+  qnaScore            Int?
+  timeManagementScore Int?
+  totalScore          Float?
+  feedback            String?
+  pointsAwarded       Int?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([studentId])
+  @@index([batchId])
+}
+
+// ---------------------------------------------------------------------------
+// Self-Assessment
+// ---------------------------------------------------------------------------
+
+enum SelfAssessmentApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model SelfAssessment {
+  id                      String                       @id @default(cuid())
+  studentId               String
+  student                 Student                      @relation(fields: [studentId], references: [id])
+  periodLabel             String
+  topicOrSkill            String?
+  // Nullable: the 4.0 redesign replaced confidence-rating input with a Topic/Platform/Link
+  // approval-request form. Older records keep their rating; the compare endpoint accounts for both.
+  confidenceRating        Int?
+  reflection              String?
+  helpNeeded              String?
+  examReadiness           Int?
+  communicationConfidence Int?
+  platform                String?
+  link                    String?
+  approvalStatus          SelfAssessmentApprovalStatus @default(PENDING)
+  decidedById             String?
+  decidedAt               DateTime?
+  submittedAt             DateTime                     @default(now())
+  createdAt               DateTime                     @default(now())
+
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Certifications & Certificates
+// ---------------------------------------------------------------------------
+
+model CertificationCatalog {
+  id            String   @id @default(cuid())
+  courseId      String?
+  course        Course?  @relation(fields: [courseId], references: [id])
+  name          String
+  provider      String?
+  description   String?
+  isRecommended Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  certifications Certification[]
+}
+
+model Certification {
+  id                 String                @id @default(cuid())
+  studentId          String
+  student            Student               @relation(fields: [studentId], references: [id])
+  catalogId          String?
+  catalog            CertificationCatalog? @relation(fields: [catalogId], references: [id])
+  name               String
+  provider           String?
+  status             CertificationStatus   @default(RECOMMENDED)
+  examDate           DateTime?
+  resultDate         DateTime?
+  score              String?
+  certificateFileUrl String?
+  expiryDate         DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([studentId])
+  @@index([status])
+}
+
+model Certificate {
+  id                String            @id @default(cuid())
+  certificateNumber String            @unique
+  studentId         String
+  student           Student           @relation(fields: [studentId], references: [id])
+  courseId          String?
+  batchId           String?
+  batch             Batch?            @relation(fields: [batchId], references: [id])
+  title             String
+  completionDate    DateTime
+  issueDate         DateTime          @default(now())
+  qrCodeDataUrl     String?
+  fileUrl           String?
+  status            CertificateStatus @default(VALID)
+  revokedReason     String?
+  revokedById       String?
+  revokedAt         DateTime?
+  issuedById        String
+  verificationCount Int               @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([studentId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Student of the Month
+// ---------------------------------------------------------------------------
+
+model StudentOfMonthAward {
+  id          String        @id @default(cuid())
+  period      String // e.g. 2026-08
+  studentId   String
+  student     Student       @relation(fields: [studentId], references: [id])
+  category    AwardCategory
+  score       Float
+  batchId     String?
+  batch       Batch?        @relation(fields: [batchId], references: [id])
+  courseId    String?
+  publishedAt DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+
+  @@unique([period, category, batchId])
+}
+
+/// Records every scored student's composite for a period (not just award winners), so
+/// "Most Improved" can compare a student's own prior-period composite regardless of whether
+/// they won an award that period.
+model StudentCompositeSnapshot {
+  id            String   @id @default(cuid())
+  period        String // e.g. 2026-08
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id])
+  batchId       String?
+  composite     Float
+  attendancePct Float
+  taskPct       Float
+  createdAt     DateTime @default(now())
+
+  @@unique([period, studentId])
+  @@index([period, batchId])
+}
+
+// ---------------------------------------------------------------------------
+// Intervention (Students Requiring Attention)
+// ---------------------------------------------------------------------------
+
+model InterventionCase {
+  id                String               @id @default(cuid())
+  studentId         String
+  student           Student              @relation(fields: [studentId], references: [id])
+  severity          InterventionSeverity
+  triggerType       InterventionTrigger
+  triggerReason     String
+  assignedFacultyId String?
+  assignedFaculty   Faculty?             @relation("AssignedFaculty", fields: [assignedFacultyId], references: [id])
+  status            InterventionStatus   @default(OPEN)
+  followUpDate      DateTime?
+  parentNotified    Boolean              @default(false)
+  parentNotifiedAt  DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  resolvedAt        DateTime?
+
+  notes InterventionNote[]
+
+  @@index([studentId])
+  @@index([status])
+  @@index([severity])
+}
+
+model InterventionNote {
+  id        String           @id @default(cuid())
+  caseId    String
+  case      InterventionCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  authorId  String
+  note      String
+  createdAt DateTime         @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  NotificationCategory
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean              @default(false)
+  createdAt DateTime             @default(now())
+
+  deliveries NotificationDelivery[]
+
+  @@index([userId, isRead])
+}
+
+// Personal Calendar (4.0 issue log, Team/Faculty item 14) — private events scoped to their owner.
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  notes       String?
+  startAt     DateTime
+  endAt       DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, startAt])
+}
+
+model NotificationDelivery {
+  id             String              @id @default(cuid())
+  notificationId String
+  notification   Notification        @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  channel        NotificationChannel
+  status         DeliveryStatus      @default(PENDING)
+  sentAt         DateTime?
+  error          String?
+  createdAt      DateTime            @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Audit Log
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  entityType   String
+  entityId     String
+  action       String
+  actorId      String?
+  actor        User?    @relation("AuditActor", fields: [actorId], references: [id])
+  oldValue     Json?
+  newValue     Json?
+  reason       String?
+  createdAt    DateTime @default(now())
+  // Hash chain: entryHash = sha256(previousHash + entityType + entityId + action + actorId + oldValue + newValue + reason + createdAt).
+  // Any edit or deletion of a past row breaks the chain from that point forward, which the
+  // integrity check detects even though there is no application route to edit or delete a row.
+  previousHash String?
+  entryHash    String
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+/// A daily checkpoint recording the hash of the last audit entry at that time, so a chain break can
+/// be localised to a specific day even if the live AuditLog table were tampered with directly.
+model AuditChainAnchor {
+  id         String   @id @default(cuid())
+  anchorDate DateTime @unique
+  lastHash   String
+  entryCount Int
+  createdAt  DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+
+model ScoringConfig {
+  id                         String     @id @default(cuid())
+  attendanceWeight           Float      @default(15)
+  examWeight                 Float      @default(25)
+  taskWeight                 Float      @default(15)
+  behaviourWeight            Float      @default(15)
+  presentationWeight         Float      @default(10)
+  certificationWeight        Float      @default(10)
+  selfAssessmentWeight       Float      @default(5)
+  projectWeight              Float      @default(5)
+  attendanceThreshold        Float      @default(75)
+  // Internship: composite/attendance floor below which an intern's work is frozen pending review.
+  internPerformanceThreshold Float      @default(50)
+  // Data retention: age (years) at which a batch becomes eligible for a final archival backup before deletion.
+  batchRetentionYears        Int        @default(2)
+  // Roles for which MFA setup is required at next login (default: none; enable per role in Settings).
+  mfaRequiredRoles           RoleName[] @default([])
+  // Notification quiet hours (24h clock, e.g. 21 -> 7 suppresses non-urgent email/SMS overnight). Null = disabled.
+  quietHoursStart            Int?
+  quietHoursEnd              Int?
+  // Login lockout policy.
+  loginLockoutThreshold      Int        @default(6)
+  loginLockoutMinutes        Int        @default(15)
+  // Attendance correction window: edits by Team within this window are self-serve; older edits need Admin approval.
+  attendanceCorrectionWindowHours Int   @default(48)
+  // Data protection: automatic retention/anonymisation sweep is opt-in and off by default to avoid
+  // silently altering data — a Super Admin must explicitly enable it after reviewing the policy.
+  retentionAutoAnonymizeEnabled   Boolean @default(false)
+  updatedById                String?
+  updatedAt                  DateTime   @updatedAt
+  createdAt                  DateTime   @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Internships (SAMP 2.0)
+// ---------------------------------------------------------------------------
+
+enum InternStatus {
+  ACTIVE
+  DEMOTED
+  COMPLETED
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model InternRating {
+  id             String   @id @default(cuid())
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id])
+  ratedById      String
+  ratedByFaculty Faculty  @relation(fields: [ratedById], references: [id])
+  behaviourScore Int
+  technicalScore Int
+  projectScore   Int
+  comment        String?
+  mentorComment  String?
+  createdAt      DateTime @default(now())
+
+  @@index([studentId])
+}
+
+/// Tracks the dynamic "working under" mentor reassignment for an intern over time.
+model InternMentorHistory {
+  id           String    @id @default(cuid())
+  studentId    String
+  student      Student   @relation(fields: [studentId], references: [id])
+  mentorId     String
+  mentor       Faculty   @relation(fields: [mentorId], references: [id])
+  assignedById String
+  assignedAt   DateTime  @default(now())
+  endedAt      DateTime?
+
+  @@index([studentId])
+}
+
+model InternStateChange {
+  id        String        @id @default(cuid())
+  studentId String
+  student   Student       @relation(fields: [studentId], references: [id])
+  fromState InternStatus?
+  toState   InternStatus
+  reason    String?
+  actorId   String
+  createdAt DateTime      @default(now())
+
+  @@index([studentId])
+}
+
+model InternLeaveRequest {
+  id              String      @id @default(cuid())
+  studentId       String
+  student         Student     @relation(fields: [studentId], references: [id])
+  startDate       DateTime
+  endDate         DateTime
+  reason          String
+  status          LeaveStatus @default(PENDING)
+  approverId      String?
+  approverFaculty Faculty?    @relation("LeaveApprover", fields: [approverId], references: [id])
+  approverRemarks String?
+  createdAt       DateTime    @default(now())
+  decidedAt       DateTime?
+
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Fees and Receipts (SAMP 2.0)
+// ---------------------------------------------------------------------------
+
+enum FeePlanType {
+  ONE_TIME
+  INSTALMENT
+  QUARTERLY
+}
+
+enum InstalmentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum PaymentMode {
+  CASH
+  CARD
+  UPI
+  BANK_TRANSFER
+  GATEWAY
+}
+
+enum RefundRequestType {
+  REFUND
+  WRITE_OFF
+}
+
+enum RefundRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model FeeStructure {
+  id              String      @id @default(cuid())
+  courseId        String?
+  course          Course?     @relation(fields: [courseId], references: [id])
+  name            String
+  totalAmount     Float
+  planType        FeePlanType @default(ONE_TIME)
+  instalmentCount Int?
+  createdAt       DateTime    @default(now())
+
+  feeAccounts FeeAccount[]
+}
+
+model FeeAccount {
+  id             String        @id @default(cuid())
+  studentId      String        @unique
+  student        Student       @relation(fields: [studentId], references: [id])
+  feeStructureId String?
+  feeStructure   FeeStructure? @relation(fields: [feeStructureId], references: [id])
+  totalPayable   Float
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  instalments    Instalment[]
+  payments       FeePayment[]
+  refundRequests RefundRequest[]
+
+  @@index([studentId])
+}
+
+model Instalment {
+  id           String           @id @default(cuid())
+  feeAccountId String
+  feeAccount   FeeAccount       @relation(fields: [feeAccountId], references: [id], onDelete: Cascade)
+  sequence     Int
+  amount       Float
+  dueDate      DateTime
+  status       InstalmentStatus @default(PENDING)
+
+  payments FeePayment[]
+
+  @@unique([feeAccountId, sequence])
+}
+
+model FeePayment {
+  id                  String      @id @default(cuid())
+  feeAccountId        String
+  feeAccount          FeeAccount  @relation(fields: [feeAccountId], references: [id])
+  instalmentId        String?
+  instalment          Instalment? @relation(fields: [instalmentId], references: [id])
+  amount              Float
+  mode                PaymentMode
+  reference           String?
+  paidAt              DateTime    @default(now())
+  recordedById        String
+  needsReconciliation Boolean     @default(false)
+  createdAt           DateTime    @default(now())
+
+  receipt Receipt?
+
+  @@index([feeAccountId])
+}
+
+model Receipt {
+  id               String     @id @default(cuid())
+  receiptNumber    String     @unique
+  feePaymentId     String     @unique
+  feePayment       FeePayment @relation(fields: [feePaymentId], references: [id])
+  issuedById       String
+  issuedAt         DateTime   @default(now())
+  verificationCode String
+  createdAt        DateTime   @default(now())
+
+  reversal ReceiptReversal?
+}
+
+/// Gapless per-financial-year receipt number counter (format CO-R-YYYY-NNNNNN).
+model ReceiptSequence {
+  financialYear Int @id
+  lastNumber    Int @default(0)
+}
+
+model ReceiptReversal {
+  id           String   @id @default(cuid())
+  receiptId    String   @unique
+  receipt      Receipt  @relation(fields: [receiptId], references: [id])
+  reason       String
+  reversedById String
+  reversedAt   DateTime @default(now())
+}
+
+model RefundRequest {
+  id            String              @id @default(cuid())
+  feeAccountId  String
+  feeAccount    FeeAccount          @relation(fields: [feeAccountId], references: [id])
+  type          RefundRequestType
+  amount        Float
+  reason        String
+  status        RefundRequestStatus @default(PENDING)
+  initiatedById String
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime            @default(now())
+
+  @@index([feeAccountId])
+}
+
+// ---------------------------------------------------------------------------
+// Projects (SAMP 2.0)
+// ---------------------------------------------------------------------------
+
+model Project {
+  id          String   @id @default(cuid())
+  batchId     String
+  batch       Batch    @relation(fields: [batchId], references: [id])
+  name        String
+  scope       String?
+  groupSize   Int
+  gradingOpen Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  groups  ProjectGroup[]
+  members ProjectMember[]
+
+  @@index([batchId])
+}
+
+model ProjectGroup {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sequence  Int
+  name      String?
+  repoLink  String?
+  leaderId  String?
+  leader    Student? @relation(fields: [leaderId], references: [id])
+  createdAt DateTime @default(now())
+
+  members          ProjectMember[]
+  marks            ProjectMark[]
+  progressUpdates  ProjectProgressUpdate[]
+
+  @@unique([projectId, sequence])
+}
+
+model ProjectProgressUpdate {
+  id          String       @id @default(cuid())
+  groupId     String
+  group       ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  weekNumber  Int
+  note        String
+  link        String?
+  createdById String
+  createdAt   DateTime     @default(now())
+
+  @@index([groupId, weekNumber])
+}
+
+model ProjectMember {
+  id        String       @id @default(cuid())
+  groupId   String
+  group     ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  // Denormalized from group.projectId solely to let the database itself enforce one group per
+  // student per project, rather than relying only on an application-level check-then-create.
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  studentId String
+  student   Student      @relation(fields: [studentId], references: [id])
+  addedAt   DateTime     @default(now())
+
+  @@unique([groupId, studentId])
+  @@unique([projectId, studentId])
+}
+
+model ProjectMark {
+  id            String       @id @default(cuid())
+  groupId       String
+  group         ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  studentId     String?
+  marksObtained Float
+  maxMarks      Float        @default(100)
+  criteria      Json?
+  gradedById    String
+  gradedAt      DateTime     @default(now())
+
+  @@index([groupId])
+}
+
+// ---------------------------------------------------------------------------
+// Action Centre (SAMP 2.0)
+// ---------------------------------------------------------------------------
+
+enum ActionRequestType {
+  BATCH_TRANSFER
+  PASSWORD_RESET
+  ACADEMIC_QUERY
+  RESULT_QUERY
+  BEHAVIOUR_CHALLENGE
+  FEE_QUERY
+  ATTENDANCE_QUERY
+  GENERAL
+  DATA_ACCESS_REQUEST
+  DATA_ERASURE_REQUEST
+  DATA_CORRECTION_REQUEST
+}
+
+// ---------------------------------------------------------------------------
+// Data Protection (SAMP 2.0)
+// ---------------------------------------------------------------------------
+
+enum ConsentType {
+  DATA_PROCESSING
+  PARENTAL
+}
+
+model ConsentRecord {
+  id            String      @id @default(cuid())
+  studentId     String
+  student       Student     @relation(fields: [studentId], references: [id])
+  consentType   ConsentType
+  granted       Boolean
+  grantedById   String
+  noticeVersion String
+  createdAt     DateTime    @default(now())
+  withdrawnAt   DateTime?
+
+  @@index([studentId])
+}
+
+enum ActionRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RESOLVED
+}
+
+model ActionRequest {
+  id              String              @id @default(cuid())
+  requesterId     String
+  requester       User                @relation("ActionRequester", fields: [requesterId], references: [id])
+  type            ActionRequestType
+  subject         String
+  description     String
+  targetStudentId String?
+  targetStudent   Student?            @relation("ActionTargetStudent", fields: [targetStudentId], references: [id])
+  status          ActionRequestStatus @default(PENDING)
+  approverId      String?
+  approver        User?               @relation("ActionApprover", fields: [approverId], references: [id])
+  remarks         String?
+  createdAt       DateTime            @default(now())
+  resolvedAt      DateTime?
+
+  @@index([requesterId])
+  @@index([status])
+}
+
+/// Per-request-type target response time for the Action Centre (UR-ACT-06/FR-ACT-07). A PENDING
+/// request older than its type's targetHours is reported as SLA-breached; missing rows fall back
+/// to a default handled in code.
+model RequestSla {
+  id          String            @id @default(cuid())
+  type        ActionRequestType @unique
+  targetHours Int
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+/// Per-user, per-category opt-out of notification channels (FR-NOT-07). Absence of a row means
+/// both channels default to on.
+model NotificationPreference {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  NotificationCategory
+  inApp     Boolean              @default(true)
+  email     Boolean              @default(true)
+  updatedAt DateTime             @updatedAt
+
+  @@unique([userId, category])
+}
+
+// ---------------------------------------------------------------------------
+// Backup (SAMP 2.0)
+// ---------------------------------------------------------------------------
+
+enum BackupType {
+  MANUAL
+  SCHEDULED
+  BATCH_ARCHIVE
+}
+
+model BackupRecord {
+  id            String     @id @default(cuid())
+  filename      String
+  sizeBytes     Int
+  type          BackupType @default(MANUAL)
+  batchId       String?
+  triggeredById String?
+  // Every snapshot is encrypted at rest (AES-256-GCM) before being written to disk.
+  encrypted     Boolean    @default(true)
+  // Set when a copy was also written to the configured offsite path.
+  offsitePath   String?
+  restoredAt    DateTime?
+  restoredById  String?
+  createdAt     DateTime   @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Settings: institution profile, calendar, notification templates (SAMP 3.0)
+// ---------------------------------------------------------------------------
+
+/// Singleton — institution-wide details shown on certificates, receipts and public pages.
+model InstitutionProfile {
+  id            String   @id @default(cuid())
+  name          String
+  address       String?
+  logoUrl       String?
+  contactEmail  String?
+  contactPhone  String?
+  // Single Faculty member overseeing all interns institute-wide (4.1) — distinct from each
+  // intern's own per-intern "Task Mentor" (Student.mentorFacultyId), which stays per-intern.
+  internManagerId String?
+  internManager Faculty? @relation(fields: [internManagerId], references: [id])
+  updatedById   String?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+}
+
+model Holiday {
+  id        String   @id @default(cuid())
+  date      DateTime
+  name      String
+  createdAt DateTime @default(now())
+
+  @@unique([date])
+}
+
+/// Editable content for a notification category+channel; notify() falls back to hardcoded copy
+/// when no template is configured. Body/subject may use {{placeholders}}.
+model NotificationTemplate {
+  id              String              @id @default(cuid())
+  category        NotificationCategory
+  channel         NotificationChannel
+  subjectTemplate String
+  bodyTemplate    String
+  updatedById     String?
+  updatedAt       DateTime            @updatedAt
+  createdAt       DateTime            @default(now())
+
+  @@unique([category, channel])
+}
+
+// ---------------------------------------------------------------------------
+// Data Protection automation (SAMP 3.0)
+// ---------------------------------------------------------------------------
+
+/// Generated when a DATA_ACCESS_REQUEST is approved — a machine-readable export of a student's records.
+model DataExportRecord {
+  id            String   @id @default(cuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id])
+  requestId     String?
+  filename      String
+  generatedById String
+  createdAt     DateTime @default(now())
+
+  @@index([studentId])
+}
+
+model BreachRecord {
+  id              String    @id @default(cuid())
+  title           String
+  description     String
+  affectedCount   Int
+  detectedAt      DateTime
+  containedAt     DateTime?
+  notifiedAt      DateTime?
+  reportedById    String
+  createdAt       DateTime  @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Feed (SI Portal 3.5) — institute-wide/batch-scoped announcements.
+// ---------------------------------------------------------------------------
+
+/// Postable only by Super Admin / Academic Admin / Faculty; visible to everyone in scope
+/// (students/parents see their own batch's posts plus institute-wide ones).
+model FeedPost {
+  id        String   @id @default(cuid())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  title     String
+  content   String
+  attachmentUrl String?
+  batchId   String?
+  batch     Batch?   @relation(fields: [batchId], references: [id])
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([batchId])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Customizable dashboards (SI Portal 3.5)
+// ---------------------------------------------------------------------------
+
+/// Which chart widgets a user has chosen to show on their own dashboard, from the catalog
+/// available to their role. Absence of a row means "use the role's default set".
+model DashboardPreference {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  widgetKeys String[]
+  updatedAt  DateTime @updatedAt
+}

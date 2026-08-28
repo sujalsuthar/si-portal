@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light theme - warm cream surfaces, orange as the primary/brand accent. */
+  --color-bg: 250 243 225; /* #FAF3E1 */
+  --color-surface: 255 255 255; /* #FFFFFF */
+  --color-surface-muted: 245 231 198; /* #F5E7C6 */
+  --color-border: 217 201 154; /* #D9C99A */
+  --color-text: 23 20 18; /* near-black, warm */
+  --color-text-muted: 107 95 69;
+
+  --color-brand-50: 255 246 236;
+  --color-brand-100: 254 233 210;
+  --color-brand-200: 253 210 165;
+  --color-brand-300: 253 187 120;
+  --color-brand-400: 254 159 82;
+  --color-brand-500: 254 143 58;
+  --color-brand-600: 254 127 45; /* #FE7F2D */
+  --color-brand-700: 229 96 17;
+  --color-brand-800: 184 75 12;
+  --color-brand-900: 138 56 9;
+  /* A brand-colored text tone guaranteed readable directly on --color-surface/--color-bg in this
+     theme - orange needs to go dark for that role in light mode, blue needs to go light in dark
+     mode, which is the opposite lightness direction from the badge-chip scale above. */
+  --color-brand-ink: 184 75 12;
+}
+
+/* Dark theme - near-black surfaces, blue as the primary/brand accent. Applied via a `.dark`
+   class on <html> (see src/theme.ts), toggled by the user and defaulting to prefers-color-scheme. */
+:root[data-theme='dark'],
+.dark {
+  --color-bg: 0 0 0;
+  --color-surface: 11 18 32; /* #0B1220 */
+  --color-surface-muted: 20 27 46; /* #141B2E */
+  --color-border: 34 48 74; /* #22304A */
+  --color-text: 239 236 227; /* #EFECE3 */
+  --color-text-muted: 147 161 188;
+
+  --color-brand-50: 234 241 251;
+  --color-brand-100: 211 227 246;
+  --color-brand-200: 168 199 237;
+  --color-brand-300: 143 171 212; /* #8FABD4 */
+  --color-brand-400: 92 135 194;
+  --color-brand-500: 52 104 170;
+  --color-brand-600: 28 77 141; /* #1C4D8D */
+  --color-brand-700: 22 62 112;
+  --color-brand-800: 17 47 85;
+  --color-brand-900: 11 32 56;
+  --color-brand-ink: 143 171 212;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply antialiased;
+  background-color: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
+}
+
+/* Respect the user's motion preference instead of forcing every transition on everyone. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-ink focus:shadow-lg;
+}
+
+.card {
+  @apply rounded-xl border shadow-sm;
+  background-color: rgb(var(--color-surface));
+  border-color: rgb(var(--color-border));
+}
+
+.btn {
+  @apply inline-flex min-h-[2.5rem] items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-base;
+}
+.btn-primary {
+  @apply btn bg-brand-600 text-ink hover:bg-brand-700;
+}
+.btn-secondary {
+  @apply btn text-ink hover:opacity-80;
+  background-color: rgb(var(--color-surface-muted));
+}
+.btn-danger {
+  @apply btn bg-red-600 text-white hover:bg-red-700;
+}
+.btn-ghost {
+  @apply btn text-ink-muted hover:opacity-80;
+}
+.btn-ghost:hover {
+  background-color: rgb(var(--color-surface-muted));
+}
+
+.input {
+  @apply w-full min-h-[2.5rem] rounded-lg border px-3 py-2 text-sm text-ink transition-colors;
+  @apply focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500;
+  background-color: rgb(var(--color-surface));
+  border-color: rgb(var(--color-border));
+}
+.input::placeholder {
+  color: rgb(var(--color-text-muted));
+}
+.label {
+  @apply block text-xs font-medium text-ink-muted mb-1;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+}
