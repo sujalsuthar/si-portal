@@ -12,11 +12,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Optional — trigger Render redeploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+      - name: Optional — trigger Render redeploy hook
+        continue-on-error: true
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+          else
+            echo "No RENDER_DEPLOY_HOOK secret — Render uses Git auto-deploy on push."
+          fi
 
       - name: Live URLs
         run: |
