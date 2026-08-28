@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 /** Ensures absolute API URLs include the /api prefix (common deploy mistake). */
 function resolveApiBaseUrl(): string {
-  const raw = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+  const raw = (import.meta.env.VITE_API_URL || '/api').trim().replace(/\/$/, '');
   if (raw === '/api' || raw.endsWith('/api')) return raw;
   if (raw.startsWith('http')) return `${raw}/api`;
   return raw;
