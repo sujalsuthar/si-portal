@@ -1,6 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+/** Ensures absolute API URLs include the /api prefix (common deploy mistake). */
+function resolveApiBaseUrl(): string {
+  const raw = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+  if (raw === '/api' || raw.endsWith('/api')) return raw;
+  if (raw.startsWith('http')) return `${raw}/api`;
+  return raw;
+}
+
+const API_URL = resolveApiBaseUrl();
 
 export const api = axios.create({ baseURL: API_URL });
 
