@@ -1,0 +1,44 @@
+---
+description: After code changes, always commit, push to GitHub, and report live deploy URLs
+alwaysApply: true
+---
+
+# Auto-deploy pipeline (SI Portal)
+
+When you finish **any** task that changes code, config, or deploy settings:
+
+## 1. Commit and push (required — do not skip)
+
+1. Run `git status` and `git diff` to review changes.
+2. Stage only relevant files (never `.env`, secrets, or local tokens).
+3. Commit with a clear message focused on **why**.
+4. Push to `origin main` immediately — **do not ask the user for permission to push**.
+
+If push fails, diagnose and retry (auth, remote, hooks). Report the blocker if it cannot be fixed in-session.
+
+## 2. Deploy targets (automatic on push to `main`)
+
+| Service | Trigger | Live URL |
+|---------|---------|----------|
+| **Frontend (Vercel)** | GitHub push → Vercel Git integration | https://si-portal-rosy.vercel.app |
+| **Backend (Render)** | GitHub push → Render auto-deploy (`render.yaml`, root `backend/`) | https://si-portal-api.onrender.com/api |
+
+You do **not** need Render CLI login. Vercel CLI deploy is a fallback only if Git integration fails.
+
+## 3. After push — tell the user
+
+Always end with:
+
+- **Team link (frontend):** https://si-portal-rosy.vercel.app
+- **Demo login:** `admin@siportal.edu` / `ChangeMe123!`
+- What changed (one line)
+- Note: Vercel + Render redeploy take ~1–3 min; hard-refresh if they test immediately
+
+## 4. Env vars (do not break)
+
+- Vercel production `VITE_API_URL` = `https://si-portal-api.onrender.com/api` (no trailing newline)
+- Render `WEB_URL` = `https://si-portal-rosy.vercel.app`
+
+## 5. Optional verification
+
+After deploy window, smoke-check login API or frontend `/login` if the change affects auth or API routes.

@@ -1,0 +1,26 @@
+# Confirms push-to-main deploy pipeline. Vercel and Render redeploy via their Git integrations.
+name: Deploy on push
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Optional — trigger Render redeploy
+        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+
+      - name: Live URLs
+        run: |
+          echo "Frontend: https://si-portal-rosy.vercel.app"
+          echo "Backend API: https://si-portal-api.onrender.com/api"
+          echo "Health: https://si-portal-api.onrender.com/health"
+          echo "Demo: admin@siportal.edu / ChangeMe123!"

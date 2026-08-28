@@ -25,3 +25,9 @@ npm-debug.log*
 # Editor/OS
 .vscode/
 .idea/
+
+# Vercel local link (never commit)
+.vercel/
+frontend/.vercel/
+frontend/.env.production.local
+frontend/.env.vercel.local

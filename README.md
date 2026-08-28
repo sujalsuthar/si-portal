@@ -548,6 +548,28 @@ After seeding (`npm run prisma:seed` or `SEED_ON_START=true`), every account sha
   validity/date/amount) — never contact info or internal notes.
 - Answer keys are never returned by any API response to any role.
 
+## Team demo link (live)
+
+| | URL |
+|---|---|
+| **App (share with team)** | https://si-portal-rosy.vercel.app |
+| **API** | https://si-portal-api.onrender.com/api |
+| **Health check** | https://si-portal-api.onrender.com/health |
+| **GitHub** | https://github.com/sujalsuthar/si-portal |
+
+**Demo login:** `admin@siportal.edu` / `ChangeMe123!`
+
+### Auto-deploy (push → live)
+
+Every push to **`main`** on GitHub automatically:
+
+1. **Vercel** rebuilds the frontend (Git integration + root [`vercel.json`](vercel.json))
+2. **Render** rebuilds the backend from [`render.yaml`](render.yaml) (`backend/` Docker service)
+
+No Render CLI needed. Redeploy usually finishes in 1–3 minutes. After changes, hard-refresh the browser (`Ctrl+Shift+R`).
+
+Optional: add a Render **Deploy Hook** URL as GitHub secret `RENDER_DEPLOY_HOOK` if you ever disable Render auto-deploy — see [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
+
 ## Deploy: Backend on Render + Frontend on Vercel
 
 ### Prerequisites
