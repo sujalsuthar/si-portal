@@ -38,7 +38,7 @@ function PeopleTabsOverride({ sub, setSub }: { sub: string; setSub: (s: 'student
     { key: 'team', label: 'Team' },
   ];
   return (
-    <div className="mb-5 flex gap-1 border-b border-edge">
+    <div className="mb-5 flex flex-wrap gap-1 border-b border-edge">
       {tabs.map((t) => (
         <button
           key={t.key}

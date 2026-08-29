@@ -18,7 +18,7 @@ export default function BatchDetail() {
   const [timetableDraft, setTimetableDraft] = useState<any[]>([]);
   const [addMode, setAddMode] = useState<'existing' | 'new'>('existing');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-  const [showRanking, setShowRanking] = useState(false);
+  const [showRanking, setShowRanking] = useState(true);
 
   const { data: batch } = useQuery({ queryKey: ['batch', id], queryFn: async () => (await api.get(`/batches/${id}`)).data });
   const { data: summary } = useQuery({ queryKey: ['batch', id, 'summary'], queryFn: async () => (await api.get(`/batches/${id}/summary`)).data });
@@ -129,43 +129,22 @@ export default function BatchDetail() {
       )}
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Students ({students?.items?.length ?? 0})</h2>
-            {canManage && <button className="btn-secondary text-xs" onClick={() => setBulkAddOpen(true)}>Bulk Add Students</button>}
-          </div>
-          <Table
-            rows={students?.items ?? []}
-            keyFn={(r: any) => r.id}
-            columns={[
-              { header: 'Name', cell: (r: any) => <Link className="text-brand-ink hover:underline font-medium" to={`/people/students/${r.id}`}>{r.firstName} {r.lastName}</Link> },
-              { header: 'Code', cell: (r: any) => r.studentCode },
-              { header: 'Status', cell: (r: any) => <Badge tone={r.status === 'ACTIVE' ? 'green' : 'slate'}>{r.status}</Badge> },
-            ]}
-          />
-
-          <div className="mb-3 mt-6 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Ranking</h2>
-            <button className="text-xs text-brand-ink hover:underline" onClick={() => setShowRanking((v) => !v)}>
-              {showRanking ? 'Hide' : 'Show'} ranking
-            </button>
-          </div>
-          {showRanking && (
-            <div className="card divide-y divide-edge">
-              {rankingLoading && <p className="px-4 py-6 text-center text-sm text-ink-muted">Loading…</p>}
-              {!rankingLoading && (ranking ?? []).length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-muted">No active students to rank</p>}
-              {(ranking ?? []).map((r: any, i: number) => (
-                <Link key={r.id} to={`/people/students/${r.id}`} className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-surface-muted">
-                  <span className="flex items-center gap-2">
-                    <Badge tone={i === 0 ? 'amber' : 'slate'}>#{i + 1}</Badge>
-                    <span className="font-medium text-ink">{r.firstName} {r.lastName}</span>
-                    <span className="text-xs text-ink-muted">{r.studentCode}</span>
-                  </span>
-                  <span className="font-medium text-ink">{r.composite}%</span>
-                </Link>
-              ))}
+        <div className="lg:col-span-2 space-y-6">
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink">Students ({students?.items?.length ?? 0})</h2>
+              {canManage && <button className="btn-secondary text-xs" onClick={() => setBulkAddOpen(true)}>Bulk Add Students</button>}
             </div>
-          )}
+            <Table
+              rows={students?.items ?? []}
+              keyFn={(r: any) => r.id}
+              columns={[
+                { header: 'Name', cell: (r: any) => <Link className="text-brand-ink hover:underline font-medium" to={`/people/students/${r.id}`}>{r.firstName} {r.lastName}</Link> },
+                { header: 'Code', cell: (r: any) => r.studentCode },
+                { header: 'Status', cell: (r: any) => <Badge tone={r.status === 'ACTIVE' ? 'green' : 'slate'}>{r.status}</Badge> },
+              ]}
+            />
+          </div>
         </div>
         <div>
           <div className="mb-2 flex items-center justify-between">
@@ -187,6 +166,38 @@ export default function BatchDetail() {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-ink">Batch Ranking</h2>
+          <button className="text-xs text-brand-ink hover:underline" onClick={() => setShowRanking((v) => !v)}>
+            {showRanking ? 'Hide ranking' : 'Show ranking'}
+          </button>
+        </div>
+        {showRanking && (
+          <Table
+            loading={rankingLoading}
+            rows={ranking ?? []}
+            keyFn={(r: any) => r.id}
+            columns={[
+              {
+                header: 'Rank',
+                cell: (_r: any, i: number) => <Badge tone={i === 0 ? 'amber' : 'slate'}>#{i + 1}</Badge>,
+              },
+              {
+                header: 'Student',
+                cell: (r: any) => (
+                  <Link className="font-medium text-brand-ink hover:underline" to={`/people/students/${r.id}`}>
+                    {r.firstName} {r.lastName}
+                  </Link>
+                ),
+              },
+              { header: 'Code', cell: (r: any) => r.studentCode },
+              { header: 'Composite Score', cell: (r: any) => <span className="font-semibold text-ink">{r.composite}%</span> },
+            ]}
+          />
+        )}
       </div>
 
       <Modal open={bulkAddOpen} onClose={() => setBulkAddOpen(false)} title="Bulk Add Students to Batch" wide>

@@ -162,7 +162,7 @@ function BatchProjectsList({
           { header: 'Project', cell: (r: any) => <button type="button" className="text-brand-ink hover:underline font-medium" onClick={() => navigate(`/projects/${r.id}`)}>{r.name}</button> },
           { header: 'Groups', cell: (r: any) => r._count.groups },
           { header: 'Deadline', cell: (r: any) => (r.deadline ? new Date(r.deadline).toLocaleDateString() : '-') },
-          { header: 'Grading', cell: (r: any) => (r.gradingOpen ? 'Open' : 'Closed') },
+          { header: 'Ranking', cell: (r: any) => (r.gradingOpen ? 'Open' : 'Closed') },
         ]}
       />
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title={`New ${kind === 'INTERN' ? 'Intern' : 'Student'} Project`}>

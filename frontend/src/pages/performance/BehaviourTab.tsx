@@ -4,8 +4,10 @@ import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { Table, Badge, Modal } from '@/components/ui';
+import { StudentSearchPicker } from '@/components/StudentSearchPicker';
 
 const CATEGORIES = ['DISCIPLINE', 'PARTICIPATION', 'TEAMWORK', 'LEADERSHIP', 'RESPONSIBILITY', 'PROFESSIONALISM'];
+const MAX_BEHAVIOUR_POINTS = 5;
 
 export default function BehaviourTab() {
   const { user } = useAuth();
@@ -22,7 +24,7 @@ function StaffBehaviourView() {
   const [studentType, setStudentType] = useState<'STUDENT' | 'INTERN'>('STUDENT');
   const [batchFilter, setBatchFilter] = useState('');
   const [recordOpen, setRecordOpen] = useState(false);
-  const [studentSearch, setStudentSearch] = useState('');
+  const [studentLabel, setStudentLabel] = useState('');
   const [form, setForm] = useState({ studentId: '', category: 'PARTICIPATION', type: 'POSITIVE', points: '3', reason: '' });
   const [editTarget, setEditTarget] = useState<any>(null);
   const [editForm, setEditForm] = useState({ category: '', type: '', points: '', reason: '' });
@@ -34,11 +36,6 @@ function StaffBehaviourView() {
   const { data: events, isLoading } = useQuery({
     queryKey: ['behaviour', studentType, batchFilter],
     queryFn: async () => (await api.get('/behaviour', { params: { studentType, ...(batchFilter ? { batchId: batchFilter } : {}) } })).data,
-  });
-  const { data: studentResults } = useQuery({
-    queryKey: ['students', 'search', studentSearch, studentType],
-    queryFn: async () => (await api.get('/students', { params: { search: studentSearch, studentType, pageSize: 10 } })).data,
-    enabled: recordOpen && studentSearch.length > 1,
   });
 
   async function authorizeEvent(id: string) {
@@ -52,12 +49,16 @@ function StaffBehaviourView() {
   }
 
   async function recordEvent() {
-    if (!form.studentId || !form.reason) return toast.error('Select a student and enter a reason');
+    if (!form.studentId) return toast.error('Select a student from the search results');
+    if (!form.reason.trim() || form.reason.trim().length < 5) return toast.error('Enter a reason (at least 5 characters)');
+    const pts = Number(form.points);
+    if (!pts || pts < 1 || pts > MAX_BEHAVIOUR_POINTS) return toast.error(`Points must be between 1 and ${MAX_BEHAVIOUR_POINTS}`);
     try {
-      await api.post('/behaviour', { ...form, points: Number(form.points) });
+      await api.post('/behaviour', { ...form, points: pts });
       toast.success('Behaviour event recorded');
       setRecordOpen(false);
       setForm({ studentId: '', category: 'PARTICIPATION', type: 'POSITIVE', points: '3', reason: '' });
+      setStudentLabel('');
       queryClient.invalidateQueries({ queryKey: ['behaviour'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -71,8 +72,11 @@ function StaffBehaviourView() {
 
   async function saveEdit() {
     if (!editTarget) return;
+    if (!editForm.reason.trim() || editForm.reason.trim().length < 5) return toast.error('Enter a reason (at least 5 characters)');
+    const pts = Number(editForm.points);
+    if (!pts || pts < 1 || pts > MAX_BEHAVIOUR_POINTS) return toast.error(`Points must be between 1 and ${MAX_BEHAVIOUR_POINTS}`);
     try {
-      await api.patch(`/behaviour/${editTarget.id}`, { ...editForm, points: Number(editForm.points) });
+      await api.patch(`/behaviour/${editTarget.id}`, { ...editForm, points: pts });
       toast.success('Behaviour event updated');
       setEditTarget(null);
       queryClient.invalidateQueries({ queryKey: ['behaviour'] });
@@ -144,32 +148,21 @@ function StaffBehaviourView() {
               </select>
             </label>
           </div>
-          <label className="block"><span className="label">Points</span><input className="input" type="number" value={editForm.points} onChange={(e) => setEditForm((f) => ({ ...f, points: e.target.value }))} /></label>
-          <label className="block"><span className="label">Reason</span><textarea className="input" rows={2} value={editForm.reason} onChange={(e) => setEditForm((f) => ({ ...f, reason: e.target.value }))} /></label>
+          <label className="block"><span className="label">Points (1–{MAX_BEHAVIOUR_POINTS})</span><input className="input" type="number" min={1} max={MAX_BEHAVIOUR_POINTS} value={editForm.points} onChange={(e) => setEditForm((f) => ({ ...f, points: e.target.value }))} /></label>
+          <label className="block"><span className="label">Reason</span><textarea className="input" rows={2} value={editForm.reason} onChange={(e) => setEditForm((f) => ({ ...f, reason: e.target.value }))} /><span className="mt-1 block text-xs text-ink-muted">At least 5 characters</span></label>
           <div className="flex justify-end"><button className="btn-primary" onClick={saveEdit}>Save</button></div>
         </div>
       </Modal>
 
       <Modal open={recordOpen} onClose={() => setRecordOpen(false)} title="Record Behaviour Event">
         <div className="space-y-3">
-          <label className="block">
-            <span className="label">Student</span>
-            <input className="input" placeholder="Search student…" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
-            {studentResults?.items?.length > 0 && (
-              <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-edge">
-                {studentResults.items.map((s: any) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-muted ${form.studentId === s.id ? 'bg-brand-50' : ''}`}
-                    onClick={() => { setForm((f) => ({ ...f, studentId: s.id })); setStudentSearch(`${s.firstName} ${s.lastName}`); }}
-                  >
-                    {s.firstName} {s.lastName} ({s.studentCode})
-                  </button>
-                ))}
-              </div>
-            )}
-          </label>
+          <StudentSearchPicker
+            studentId={form.studentId}
+            selectedLabel={studentLabel}
+            enabled={recordOpen}
+            onSelect={(id, label) => { setForm((f) => ({ ...f, studentId: id })); setStudentLabel(label); }}
+            onClear={() => { setForm((f) => ({ ...f, studentId: '' })); setStudentLabel(''); }}
+          />
           <div className="form-grid">
             <label className="block">
               <span className="label">Category</span>
@@ -185,8 +178,8 @@ function StaffBehaviourView() {
               </select>
             </label>
           </div>
-          <label className="block"><span className="label">Points</span><input className="input" type="number" value={form.points} onChange={(e) => setForm((f) => ({ ...f, points: e.target.value }))} /></label>
-          <label className="block"><span className="label">Reason</span><textarea className="input" rows={2} value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} /></label>
+          <label className="block"><span className="label">Points (1–{MAX_BEHAVIOUR_POINTS})</span><input className="input" type="number" min={1} max={MAX_BEHAVIOUR_POINTS} value={form.points} onChange={(e) => setForm((f) => ({ ...f, points: e.target.value }))} /></label>
+          <label className="block"><span className="label">Reason</span><textarea className="input" rows={2} value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} /><span className="mt-1 block text-xs text-ink-muted">At least 5 characters</span></label>
           <div className="flex justify-end"><button className="btn-primary" onClick={recordEvent}>Save</button></div>
         </div>
       </Modal>

@@ -36,6 +36,14 @@ async function assertGradingGateAccess(auth: AuthContext, batchId: string): Prom
   throw ApiError.forbidden('Only Super Admin, Academic Admin, or the assigned mentor may open/close grading');
 }
 
+/** When grading is closed, faculty cannot change marks or group composition; admins still can. */
+async function assertProjectGradingOpen(projectId: string, auth: AuthContext): Promise<void> {
+  if (ROLE_GROUPS.ADMIN_LIKE.includes(auth.role)) return;
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { gradingOpen: true } });
+  if (!project) throw ApiError.notFound('Project not found');
+  if (!project.gradingOpen) throw ApiError.forbidden('Ranking is closed — marks and group changes are locked');
+}
+
 projectsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -210,7 +218,7 @@ projectsRouter.post(
     const project = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (!project) throw ApiError.notFound('Project not found');
     if (!project.gradingOpen && !ROLE_GROUPS.ADMIN_LIKE.includes(req.auth!.role)) {
-      throw ApiError.forbidden('Grading has opened for this project; ask an Admin to change group composition');
+      throw ApiError.forbidden('Ranking is closed — group composition cannot be changed');
     }
 
     const existingMembership = await prisma.projectMember.findFirst({ where: { studentId, projectId: req.params.id } });
@@ -232,6 +240,7 @@ projectsRouter.delete(
   '/:id/groups/:groupId/members/:studentId',
   authorize(...ROLE_GROUPS.STAFF),
   asyncHandler(async (req, res) => {
+    await assertProjectGradingOpen(req.params.id, req.auth!);
     await prisma.projectMember.delete({ where: { groupId_studentId: { groupId: req.params.groupId, studentId: req.params.studentId } } });
     res.status(204).end();
   }),
@@ -260,6 +269,7 @@ projectsRouter.post(
   '/:id/groups/:groupId/marks',
   authorize(...ROLE_GROUPS.STAFF),
   asyncHandler(async (req, res) => {
+    await assertProjectGradingOpen(req.params.id, req.auth!);
     const data = markSchema.parse(req.body);
     const mark = await prisma.projectMark.create({ data: { ...data, groupId: req.params.groupId, gradedById: req.auth!.userId } });
     res.status(201).json(mark);
@@ -271,6 +281,7 @@ projectsRouter.patch(
   '/:id/groups/:groupId/marks/:markId',
   authorize(...ROLE_GROUPS.STAFF),
   asyncHandler(async (req, res) => {
+    await assertProjectGradingOpen(req.params.id, req.auth!);
     const data = markSchema.partial().parse(req.body);
     const mark = await prisma.projectMark.update({
       where: { id: req.params.markId },

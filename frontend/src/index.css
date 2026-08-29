@@ -138,8 +138,7 @@ body {
 }
 
 .tab-bar {
-  @apply mb-5 flex gap-1 overflow-x-auto border-b border-edge;
-  scrollbar-width: thin;
+  @apply mb-5 flex flex-wrap gap-1 border-b border-edge;
 }
 
 .tab-bar-item {

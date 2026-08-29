@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api, apiErrorMessage } from '@/lib/api';
+import { publicApi, apiErrorMessage } from '@/lib/api';
 import { Badge } from '@/components/ui';
 
 interface VerifyResult {
@@ -23,7 +23,7 @@ export default function VerifyCertificate() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['verify', certificateNumber],
     queryFn: async () => {
-      const { data } = await api.get<VerifyResult>(`/verify/${encodeURIComponent(certificateNumber!)}`);
+      const { data } = await publicApi.get<VerifyResult>(`/verify/${encodeURIComponent(certificateNumber!)}`);
       return data;
     },
     enabled: !!certificateNumber,

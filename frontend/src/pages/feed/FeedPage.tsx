@@ -7,6 +7,26 @@ import { PageHeader, Badge, Modal, EmptyState, Spinner } from '@/components/ui';
 
 const POSTER_ROLES = ['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FACULTY'];
 
+const FEED_MAX_BYTES = 2 * 1024 * 1024;
+const FEED_ACCEPT = 'image/jpeg,image/png,application/pdf,.jpg,.jpeg,.pdf';
+
+function handleAttachmentPick(file: File | null, setAttachment: (f: File | null) => void) {
+  if (!file) {
+    setAttachment(null);
+    return;
+  }
+  const okType = ['image/jpeg', 'image/png', 'application/pdf'].includes(file.type);
+  if (!okType) {
+    toast.error('Only JPG/JPEG and PDF files are allowed');
+    return;
+  }
+  if (file.size > FEED_MAX_BYTES) {
+    toast.error('File must be 2 MB or smaller');
+    return;
+  }
+  setAttachment(file);
+}
+
 export default function FeedPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -110,7 +130,7 @@ export default function FeedPage() {
                     </div>
                     <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">{p.content}</p>
                     {p.attachmentUrl && (
-                      /\.(png|jpe?g|webp)$/i.test(p.attachmentUrl) ? (
+                      /\.(jpe?g|png)$/i.test(p.attachmentUrl) ? (
                         <img src={p.attachmentUrl} alt="Attachment" className="mt-2 max-h-64 rounded-lg border border-edge" />
                       ) : (
                         <a href={p.attachmentUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-brand-ink hover:underline">View attachment</a>
@@ -164,8 +184,9 @@ export default function FeedPage() {
             )}
           </label>
           <label className="block">
-            <span className="label">Attach Image/File (optional)</span>
-            <input className="input" type="file" accept="image/png,image/jpeg,image/webp,application/pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={(e) => setAttachment(e.target.files?.[0] ?? null)} />
+            <span className="label">Attach file (optional)</span>
+            <input className="input" type="file" accept={FEED_ACCEPT} onChange={(e) => handleAttachmentPick(e.target.files?.[0] ?? null, setAttachment)} />
+            <span className="mt-1 block text-xs text-ink-muted">JPG/JPEG or PDF only, max 2 MB</span>
           </label>
           <div className="flex justify-end">
             <button className="btn-primary" onClick={submitPost} disabled={isFaculty && postableBatches?.length === 0}>Post</button>

@@ -8,7 +8,7 @@ import { ApiError } from '@/utils/apiError';
 import { recordAudit } from '@/lib/audit';
 import { getFacultyBatchIds, getParentStudentIds } from '@/utils/scope';
 import { notify, notifyStudentParents } from '@/lib/notify';
-import { uploadAttachment, publicUploadUrl } from '@/middleware/upload';
+import { uploadFeedAttachment, publicUploadUrl } from '@/middleware/upload';
 
 export const feedRouter = Router();
 feedRouter.use(authenticate);
@@ -90,7 +90,7 @@ async function notifyFeedAudience(post: { id: string; title: string; batchId: st
 feedRouter.post(
   '/',
   authorize(...POSTER_ROLES),
-  uploadAttachment.single('attachment'),
+  uploadFeedAttachment.single('attachment'),
   asyncHandler(async (req, res) => {
     const data = createSchema.parse(req.body);
 

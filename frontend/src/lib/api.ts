@@ -12,6 +12,9 @@ const API_URL = resolveApiBaseUrl();
 
 export const api = axios.create({ baseURL: API_URL });
 
+/** Unauthenticated client for public pages (certificate verify) — never redirects to login. */
+export const publicApi = axios.create({ baseURL: API_URL });
+
 function getStoredTokens() {
   const raw = localStorage.getItem('samp_auth');
   return raw ? (JSON.parse(raw) as { accessToken: string; refreshToken: string; sessionId?: string }) : null;
@@ -59,7 +62,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
-    if (error.response?.status === 401 && original && !original._retry && !original.url?.includes('/auth/')) {
+    if (error.response?.status === 401 && original && !original._retry && !original.url?.includes('/auth/') && !original.url?.includes('/verify/')) {
       original._retry = true;
       refreshPromise = refreshPromise ?? refreshAccessToken();
       const newToken = await refreshPromise;

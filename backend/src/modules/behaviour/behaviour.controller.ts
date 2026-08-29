@@ -18,7 +18,7 @@ const createSchema = z.object({
   category: z.nativeEnum(BehaviourCategory),
   type: z.nativeEnum(PointType),
   points: z.number().int().min(-5).max(5).refine((p) => p !== 0, 'points cannot be zero'),
-  reason: z.string().min(20, 'A behaviour note must explain the reason in at least 20 characters'),
+  reason: z.string().min(5, 'Please enter a brief reason (at least 5 characters)'),
   eventDate: z.coerce.date().optional(),
 });
 
@@ -121,7 +121,7 @@ const editSchema = z.object({
   category: z.nativeEnum(BehaviourCategory).optional(),
   type: z.nativeEnum(PointType).optional(),
   points: z.number().int().min(-5).max(5).refine((p) => p !== 0, 'points cannot be zero').optional(),
-  reason: z.string().min(20, 'A behaviour note must explain the reason in at least 20 characters').optional(),
+  reason: z.string().min(5, 'Please enter a brief reason (at least 5 characters)').optional(),
 });
 
 /** Edits an already-recorded behaviour event (4.1: "should be editable"). */

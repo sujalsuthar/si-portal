@@ -104,6 +104,12 @@ export default function TaskDetail() {
               { header: 'Student', cell: (r: any) => `${r.student?.firstName ?? ''} ${r.student?.lastName ?? ''}` },
               { header: 'Status', cell: (r: any) => <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge> },
               {
+                header: 'Feedback',
+                cell: (r: any) => (r.status === 'EVALUATED' && r.feedback ? (
+                  <span className="block max-w-xs text-xs text-ink-muted">{r.feedback}</span>
+                ) : '-'),
+              },
+              {
                 header: 'Evaluate',
                 cell: (r: any) => {
                   const isEvaluated = r.status === 'EVALUATED';
@@ -134,9 +140,11 @@ export default function TaskDetail() {
                     );
                   }
                   return isEvaluated ? (
-                    <div className="flex items-center gap-2">
-                      <span>{r.pointsAwarded} pts</span>
-                      <button className="text-xs text-brand-ink hover:underline" onClick={() => setEditingIds((prev) => ({ ...prev, [r.id]: true }))}>Edit</button>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span>{r.pointsAwarded} pts</span>
+                        <button className="text-xs text-brand-ink hover:underline" onClick={() => setEditingIds((prev) => ({ ...prev, [r.id]: true }))}>Edit</button>
+                      </div>
                     </div>
                   ) : (
                     '-'

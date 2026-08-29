@@ -40,8 +40,20 @@ function fileFilter(_req: unknown, file: Express.Multer.File, cb: multer.FileFil
 
 const limits = { fileSize: env.maxUploadMb * 1024 * 1024 };
 
+const FEED_ATTACHMENT_MIME = new Set(['image/jpeg', 'image/png', 'application/pdf']);
+
+function feedFileFilter(_req: unknown, file: Express.Multer.File, cb: multer.FileFilterCallback) {
+  if (!FEED_ATTACHMENT_MIME.has(file.mimetype)) {
+    return cb(new Error('Only JPG/JPEG and PDF files are allowed'));
+  }
+  cb(null, true);
+}
+
+const feedAttachmentLimits = { fileSize: 2 * 1024 * 1024 };
+
 export const uploadPhoto = multer({ storage: storageFor('photos'), fileFilter, limits });
 export const uploadAttachment = multer({ storage: storageFor('attachments'), fileFilter, limits });
+export const uploadFeedAttachment = multer({ storage: storageFor('attachments'), fileFilter: feedFileFilter, limits: feedAttachmentLimits });
 export const uploadEvidence = multer({ storage: storageFor('evidence'), fileFilter, limits });
 
 export function publicUploadUrl(subdir: string, filename: string): string {

@@ -31,6 +31,7 @@ export default function ProjectDetail() {
 
   if (isLoading || !project) return <Spinner />;
 
+  const gradingLocked = user?.role === 'FACULTY' && !project.gradingOpen;
   const singleGroup = project.groups[0];
 
   function isMemberOf(g: any) {
@@ -180,7 +181,7 @@ export default function ProjectDetail() {
                 {isAdmin && g.leaderId !== m.student.id && (
                   <button type="button" className="text-xs text-brand-ink hover:underline" onClick={() => setLeader(g.id, m.student.id)}>Make Leader</button>
                 )}
-                {isStaff && <button type="button" className="text-xs text-red-600 dark:text-red-400 hover:underline" onClick={() => removeMember(g.id, m.student.id)}>Remove</button>}
+                {isStaff && !gradingLocked && <button type="button" className="text-xs text-red-600 dark:text-red-400 hover:underline" onClick={() => removeMember(g.id, m.student.id)}>Remove</button>}
               </span>
             </li>
           ))}
@@ -223,7 +224,7 @@ export default function ProjectDetail() {
           )}
         </div>
 
-        {isStaff && (
+        {isStaff && !gradingLocked && (
           <div className="flex flex-wrap gap-2 text-xs">
             {groupCanAddMember && <button type="button" className="text-brand-ink hover:underline" onClick={() => setAddMemberGroupId(g.id)}>+ Add Student</button>}
             <button type="button" className="text-brand-ink hover:underline" onClick={() => openGrade(g)}>{g.marks.length > 0 ? 'Edit Grade' : 'Grade Group'}</button>
@@ -240,10 +241,15 @@ export default function ProjectDetail() {
         subtitle={`${project.kind === 'INTERN' ? 'Intern' : 'Student'} Project · ${project.batch.name} · Group size: ${project.groupSize}${project.deadline ? ` · Deadline: ${new Date(project.deadline).toLocaleDateString()}` : ''}`}
         actions={
           isStaff && (
-            <button className="btn-secondary" onClick={toggleGrading}>{project.gradingOpen ? 'Close Grading' : 'Reopen Grading'}</button>
+            <button className="btn-secondary" onClick={toggleGrading}>{project.gradingOpen ? 'Close Ranking' : 'Reopen Ranking'}</button>
           )
         }
       />
+      {gradingLocked && (
+        <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          Ranking is closed — marks and group changes are read-only. Contact an admin to reopen if needed.
+        </p>
+      )}
       {project.scope && <p className="mb-4 text-sm text-ink-muted">{project.scope}</p>}
       <p className="mb-4 text-xs text-ink-muted">Each batch project has one group of up to {project.groupSize} students. Add the GitHub repository link and weekly progress reports below.</p>
 
