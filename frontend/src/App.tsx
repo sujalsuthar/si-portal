@@ -126,7 +126,7 @@ export default function App() {
           </Route>
           <Route path="/settings/*" element={<SettingsHub />} />
 
-          <Route element={<ProtectedRoute roles={['SUPER_ADMIN']} />}>
+          <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FACULTY']} />}>
             <Route path="/search" element={<UserSearchPage />} />
             <Route path="/search/:kind/:id" element={<UserSearchPage />} />
           </Route>

@@ -3,8 +3,10 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
+import { useAuth } from '@/auth/AuthContext';
 import { PageHeader, Badge, Spinner, Modal, EmptyState } from '@/components/ui';
 import { roleLabel } from '@/lib/roleLabels';
+import { RoleName } from '@/types';
 
 type SearchResult = {
   kind: 'student' | 'faculty' | 'parent' | 'staff';
@@ -24,7 +26,14 @@ const KIND_LABEL: Record<string, string> = {
   staff: 'Staff account',
 };
 
+const SEARCH_SUBTITLE: Record<string, string> = {
+  SUPER_ADMIN: 'Find any student, parent, team member, or staff account — view profiles and take actions.',
+  ACADEMIC_ADMIN: 'Search institute-wide for students, parents, team, and staff accounts (Super Admin accounts hidden).',
+  FACULTY: 'Search students and parents in your assigned batches, and team members you work with.',
+};
+
 export default function UserSearchPage() {
+  const { user } = useAuth();
   const { kind, id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get('q') ?? '';
@@ -53,7 +62,7 @@ export default function UserSearchPage() {
     <div>
       <PageHeader
         title="User Search"
-        subtitle="Find any student, parent, team member, or staff account — view their profile and take actions."
+        subtitle={SEARCH_SUBTITLE[user?.role ?? ''] ?? 'Search users in your permitted scope.'}
       />
 
       <div className="card p-4">
@@ -120,12 +129,19 @@ function SearchResultRow({ result }: { result: SearchResult }) {
   );
 }
 
-/** Compact search for Super Admin dashboard. */
-export function GlobalUserSearch() {
+/** Compact search for dashboard (Super Admin, Academic Admin, Faculty). */
+export function GlobalUserSearch({ role }: { role: RoleName }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [open, setOpen] = useState(false);
+
+  const placeholder =
+    role === 'FACULTY'
+      ? 'Search your students, parents, or team…'
+      : role === 'ACADEMIC_ADMIN'
+        ? 'Search students, parents, team, staff…'
+        : 'Search students, parents, team, admins…';
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), 300);
@@ -146,7 +162,7 @@ export function GlobalUserSearch() {
         <h2 className="mb-2 text-sm font-semibold text-ink">Quick User Search</h2>
         <input
           className="input"
-          placeholder="Search students, parents, team, admins…"
+          placeholder={placeholder}
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}

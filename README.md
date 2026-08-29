@@ -525,11 +525,11 @@ After seeding (`npm run prisma:seed` or `SEED_ON_START=true`), every account sha
 
 | Role | Email |
 |---|---|
-| Super Admin | `admin@siportal.edu` |
+| Super Admin | `admin@siportal.edu`, `sujal.suthar@siportal.edu` |
 | Management | `management@siportal.edu` |
-| Academic Admin | `academic.admin@siportal.edu` |
+| Academic Admin | `academic.admin@siportal.edu`, `sagar.patel@siportal.edu` |
 | Accounts | `accounts@siportal.edu` |
-| Team | `priya.faculty@siportal.edu`, `arjun.faculty@siportal.edu`, `neha.faculty@siportal.edu` |
+| Team | `priya.faculty@`, `arjun.faculty@`, `neha.faculty@`, `subham.shah@`, `krish.solanki@` (all `@siportal.edu`) |
 | Student | `aarav.kumar@student.siportal.edu` (and 9 more — see seed output; the 2nd student is a seeded Intern) |
 | Parent | `parent.aarav@siportal.edu` (and 9 more) |
 

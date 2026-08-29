@@ -48,12 +48,104 @@ function randomOf<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+async function seedNamedUsers() {
+  const named = [
+    { email: 'sujal.suthar@siportal.edu', role: RoleName.SUPER_ADMIN as RoleName },
+    { email: 'sagar.patel@siportal.edu', role: RoleName.ACADEMIC_ADMIN as RoleName },
+    {
+      email: 'subham.shah@siportal.edu',
+      role: RoleName.FACULTY as RoleName,
+      faculty: { employeeCode: 'FAC-010', firstName: 'Subham', lastName: 'Shah', department: 'Web Development', designation: 'Instructor' },
+    },
+    {
+      email: 'krish.solanki@siportal.edu',
+      role: RoleName.FACULTY as RoleName,
+      faculty: { employeeCode: 'FAC-011', firstName: 'Krish', lastName: 'Solanki', department: 'Web Development', designation: 'Instructor' },
+    },
+  ];
+
+  for (const entry of named) {
+    const user = await createUser(entry.email, entry.role);
+    if (entry.faculty) {
+      const f = entry.faculty;
+      await prisma.faculty.upsert({
+        where: { userId: user.id },
+        update: { firstName: f.firstName, lastName: f.lastName, employeeCode: f.employeeCode, department: f.department, designation: f.designation },
+        create: {
+          userId: user.id,
+          employeeCode: f.employeeCode,
+          firstName: f.firstName,
+          lastName: f.lastName,
+          department: f.department,
+          designation: f.designation,
+          joiningDate: new Date('2025-06-01'),
+        },
+      });
+    }
+  }
+
+  const fswdBatch = await prisma.batch.findFirst({ where: { code: 'FSWD-2026-A' } });
+  if (fswdBatch) {
+    for (const email of ['subham.shah@siportal.edu', 'krish.solanki@siportal.edu']) {
+      const user = await prisma.user.findUnique({ where: { email }, include: { faculty: true } });
+      if (user?.faculty) {
+        await prisma.batchFacultyAssignment.upsert({
+          where: { batchId_facultyId_subject: { batchId: fswdBatch.id, facultyId: user.faculty.id, subject: 'Lab Support' } },
+          update: {},
+          create: { batchId: fswdBatch.id, facultyId: user.faculty.id, subject: 'Lab Support' },
+        });
+      }
+    }
+  }
+
+  console.log('Named users ensured: sujal.suthar, sagar.patel, subham.shah, krish.solanki');
+}
+
+async function seedStaffNotifications() {
+  const staffEmails = [
+    process.env.SEED_ADMIN_EMAIL || 'admin@siportal.edu',
+    'academic.admin@siportal.edu',
+    'sagar.patel@siportal.edu',
+    'sujal.suthar@siportal.edu',
+    'priya.faculty@siportal.edu',
+    'subham.shah@siportal.edu',
+  ];
+  const users = await prisma.user.findMany({ where: { email: { in: staffEmails }, isActive: true }, select: { id: true, email: true } });
+  for (const user of users) {
+    const existing = await prisma.notification.count({ where: { userId: user.id } });
+    if (existing > 0) continue;
+    await prisma.notification.createMany({
+      data: [
+        {
+          userId: user.id,
+          category: 'GENERAL',
+          title: 'Welcome to SI Portal',
+          message: 'Your notification centre is active. New requests, updates, and alerts will appear here.',
+          link: '/notifications',
+          isRead: false,
+        },
+        {
+          userId: user.id,
+          category: 'GENERAL',
+          title: 'Action Centre',
+          message: 'Check the Action Centre for pending student and parent requests.',
+          link: '/action-centre',
+          isRead: false,
+        },
+      ],
+    });
+  }
+}
+
 async function main() {
   console.log('Seeding SI Portal demo data...');
+
+  await seedNamedUsers();
 
   const existingStudents = await prisma.student.count();
   if (existingStudents > 0) {
     console.log(`Seed skipped: database already has ${existingStudents} students (demo data present).`);
+    await seedStaffNotifications();
     return;
   }
 
@@ -656,7 +748,10 @@ async function main() {
   console.log(`  Student:         aarav.kumar@student.siportal.edu (and 9 more)`);
   console.log(`  Parent:          parent.aarav@siportal.edu (and 9 more)`);
   console.log(`  Public certificate verification: /verify/${certificateNumber}`);
+  console.log(`  Named team: sujal.suthar@, sagar.patel@, subham.shah@, krish.solanki@ (password: ${DEMO_PASSWORD})`);
   console.log(`  No account has two-factor authentication enabled by default — set it up under Settings > Profile & Password.`);
+
+  await seedStaffNotifications();
 }
 
 main()

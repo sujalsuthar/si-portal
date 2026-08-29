@@ -25,11 +25,12 @@ export default function Dashboard() {
     <div>
       <PageHeader title={`Welcome back${user?.profile ? `, ${(user.profile as { firstName?: string }).firstName ?? ''}` : ''}`} subtitle="Here's what needs your attention today." />
 
+      {(user?.role === 'SUPER_ADMIN' || user?.role === 'ACADEMIC_ADMIN' || user?.role === 'FACULTY') && (
+        <GlobalUserSearch role={user!.role} />
+      )}
+
       {(user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGEMENT') && (
-        <>
-          {user?.role === 'SUPER_ADMIN' && <GlobalUserSearch />}
-          <ManagementDashboard data={data} />
-        </>
+        <ManagementDashboard data={data} />
       )}
       {user?.role === 'ACADEMIC_ADMIN' && <AdminDashboard data={data} />}
       {user?.role === 'ACCOUNTS' && <AccountsDashboard data={data} />}

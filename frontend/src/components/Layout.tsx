@@ -32,7 +32,7 @@ const NAV: NavItem[] = [
   { to: '/reports', label: 'Reports', roles: REPORTS_ROLES },
   { to: '/notifications', label: 'Notifications' },
   { to: '/calendar', label: 'Calendar', roles: ['FACULTY'] },
-  { to: '/search', label: 'Search', roles: ['SUPER_ADMIN'] },
+  { to: '/search', label: 'Search', roles: ['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FACULTY'] },
   { to: '/backup', label: 'Backup', roles: ADMIN_LIKE },
   { to: '/settings', label: 'Settings' },
 ];

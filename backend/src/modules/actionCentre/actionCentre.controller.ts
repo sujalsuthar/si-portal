@@ -77,6 +77,65 @@ actionCentreRouter.post(
         targetStudentId: data.targetStudentId ?? req.auth!.studentId,
       },
     });
+
+    const link = '/action-centre';
+    const message = `${data.type.replace(/_/g, ' ')}: ${data.subject}`;
+
+    const adminUsers = await prisma.user.findMany({
+      where: { role: { in: [RoleName.SUPER_ADMIN, RoleName.ACADEMIC_ADMIN] }, isActive: true },
+      select: { id: true },
+    });
+    for (const u of adminUsers) {
+      await notify({
+        userId: u.id,
+        category: NotificationCategory.GENERAL,
+        title: 'New Action Centre request',
+        message,
+        link,
+      });
+    }
+
+    const targetStudentId = data.targetStudentId ?? req.auth!.studentId;
+    if (targetStudentId) {
+      const student = await prisma.student.findUnique({
+        where: { id: targetStudentId },
+        select: { currentBatchId: true, mentorFacultyId: true },
+      });
+      if (student?.currentBatchId) {
+        const batchFaculty = await prisma.batchFacultyAssignment.findMany({
+          where: { batchId: student.currentBatchId },
+          include: { faculty: { select: { userId: true } } },
+        });
+        const notified = new Set(adminUsers.map((u) => u.id));
+        for (const a of batchFaculty) {
+          if (!notified.has(a.faculty.userId)) {
+            await notify({
+              userId: a.faculty.userId,
+              category: NotificationCategory.GENERAL,
+              title: 'New Action Centre request',
+              message,
+              link,
+            });
+          }
+        }
+      }
+      if (student?.mentorFacultyId) {
+        const mentor = await prisma.faculty.findUnique({
+          where: { id: student.mentorFacultyId },
+          select: { userId: true },
+        });
+        if (mentor && !adminUsers.some((u) => u.id === mentor.userId)) {
+          await notify({
+            userId: mentor.userId,
+            category: NotificationCategory.GENERAL,
+            title: 'New Action Centre request',
+            message,
+            link,
+          });
+        }
+      }
+    }
+
     res.status(201).json(request);
   }),
 );
