@@ -136,6 +136,7 @@ const institutionSchema = z.object({
   logoUrl: z.string().optional(),
   contactEmail: z.string().email().optional(),
   contactPhone: z.string().optional(),
+  googleDriveUrl: z.string().url().optional().or(z.literal('')),
   internManagerId: z.string().nullable().optional(),
 });
 

@@ -85,6 +85,52 @@ gradesRouter.get(
   }),
 );
 
+/** Student exam roster: all held exams in the student's batch with Given/Not Given status. */
+gradesRouter.get(
+  '/me/exam-roster',
+  authorize(RoleName.STUDENT),
+  asyncHandler(async (req, res) => {
+    const studentId = req.auth!.studentId!;
+    const student = await prisma.student.findUnique({ where: { id: studentId }, select: { currentBatchId: true } });
+    if (!student?.currentBatchId) return res.json([]);
+
+    const exams = await prisma.exam.findMany({
+      where: {
+        batchId: student.currentBatchId,
+        status: { notIn: ['DRAFT', 'REJECTED'] },
+        title: { not: '__PAPER_LIBRARY__' },
+      },
+      orderBy: { examDate: 'desc' },
+      select: { id: true, title: true, subject: true, examDate: true, totalMarks: true, status: true },
+    });
+
+    const examIds = exams.map((e) => e.id);
+    const [answers, grades] = await Promise.all([
+      prisma.studentAnswer.findMany({ where: { studentId, examId: { in: examIds } }, select: { examId: true }, distinct: ['examId'] }),
+      prisma.grade.findMany({ where: { studentId, examId: { in: examIds }, status: GradeStatus.PUBLISHED }, select: { examId: true, marksObtained: true, percentage: true } }),
+    ]);
+    const answeredExamIds = new Set(answers.map((a) => a.examId));
+    const gradeByExam = new Map(grades.map((g) => [g.examId, g]));
+
+    res.json(
+      exams.map((exam) => {
+        const grade = gradeByExam.get(exam.id);
+        const given = answeredExamIds.has(exam.id) || !!grade;
+        return {
+          examId: exam.id,
+          examName: exam.title,
+          subject: exam.subject,
+          examDate: exam.examDate,
+          totalMarks: exam.totalMarks,
+          status: given ? 'Given' : 'Not Given',
+          marksObtained: grade?.marksObtained ?? null,
+          percentage: grade?.percentage ?? null,
+        };
+      }),
+    );
+  }),
+);
+
 /** Batch comparison / exam performance summary. */
 gradesRouter.get(
   '/exam/:examId/summary',

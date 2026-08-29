@@ -15,6 +15,7 @@ export default function ActionCentrePage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isStaff = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN'].includes(user.role);
+  const isStudent = user?.role === 'STUDENT';
   const canRaise = user && ['STUDENT', 'PARENT'].includes(user.role);
   const [raiseOpen, setRaiseOpen] = useState(false);
   const [decisionTarget, setDecisionTarget] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
@@ -65,6 +66,62 @@ export default function ActionCentrePage() {
 
   const typeOptions = user?.role === 'PARENT' ? PARENT_TYPES : STUDENT_TYPES;
 
+  const studentColumns = [
+    { header: 'Type', cell: (r: any) => r.type.replace(/_/g, ' ') },
+    { header: 'Subject', cell: (r: any) => r.subject },
+    { header: 'Raised', cell: (r: any) => new Date(r.createdAt).toLocaleDateString() },
+    {
+      header: 'Status',
+      cell: (r: any) => (
+        <span className="inline-flex items-center gap-1.5">
+          <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
+          {r.slaBreached && (
+            <span title={`Open ${r.hoursOpen}h, target ${r.slaTargetHours}h`}>
+              <Badge tone="red">SLA breached</Badge>
+            </span>
+          )}
+        </span>
+      ),
+    },
+  ];
+
+  const staffColumns = [
+    { header: 'Type', cell: (r: any) => r.type.replace(/_/g, ' ') },
+    { header: 'Subject', cell: (r: any) => r.subject },
+    { header: 'Requester', cell: (r: any) => r.requester.email },
+    {
+      header: 'Status',
+      cell: (r: any) => (
+        <span className="inline-flex items-center gap-1.5">
+          <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
+          {r.slaBreached && (
+            <span title={`Open ${r.hoursOpen}h, target ${r.slaTargetHours}h`}>
+              <Badge tone="red">SLA breached</Badge>
+            </span>
+          )}
+        </span>
+      ),
+    },
+    { header: 'Raised', cell: (r: any) => new Date(r.createdAt).toLocaleDateString() },
+    {
+      header: 'Actions',
+      cell: (r: any) => (
+        <div className="flex items-center gap-2">
+          {isStaff && r.status === 'PENDING' && (
+            <>
+              <button className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline" onClick={() => setDecisionTarget({ id: r.id, action: 'approve' })}>Approve</button>
+              <button className="text-xs text-red-600 dark:text-red-400 hover:underline" onClick={() => setDecisionTarget({ id: r.id, action: 'reject' })}>Reject</button>
+            </>
+          )}
+          {r.type === 'DATA_ACCESS_REQUEST' && r.status === 'APPROVED' && (
+            <button className="text-xs text-brand-ink hover:underline" onClick={() => downloadExport(r.id)}>Download Export</button>
+          )}
+          {isStaff && r.status !== 'PENDING' && r.type !== 'DATA_ACCESS_REQUEST' && (r.remarks ?? '-')}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -76,42 +133,7 @@ export default function ActionCentrePage() {
         loading={isLoading}
         rows={requests ?? []}
         keyFn={(r: any) => r.id}
-        columns={[
-          { header: 'Type', cell: (r: any) => r.type.replace(/_/g, ' ') },
-          { header: 'Subject', cell: (r: any) => r.subject },
-          ...(isStaff ? [{ header: 'Requester', cell: (r: any) => r.requester.email }] : []),
-          {
-            header: 'Status',
-            cell: (r: any) => (
-              <span className="inline-flex items-center gap-1.5">
-                <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
-                {r.slaBreached && (
-                  <span title={`Open ${r.hoursOpen}h, target ${r.slaTargetHours}h`}>
-                    <Badge tone="red">SLA breached</Badge>
-                  </span>
-                )}
-              </span>
-            ),
-          },
-          { header: 'Raised', cell: (r: any) => new Date(r.createdAt).toLocaleDateString() },
-          {
-            header: 'Actions',
-            cell: (r: any) => (
-              <div className="flex items-center gap-2">
-                {isStaff && r.status === 'PENDING' && (
-                  <>
-                    <button className="text-xs text-emerald-700 dark:text-emerald-400 hover:underline" onClick={() => setDecisionTarget({ id: r.id, action: 'approve' })}>Approve</button>
-                    <button className="text-xs text-red-600 dark:text-red-400 hover:underline" onClick={() => setDecisionTarget({ id: r.id, action: 'reject' })}>Reject</button>
-                  </>
-                )}
-                {r.type === 'DATA_ACCESS_REQUEST' && r.status === 'APPROVED' && (
-                  <button className="text-xs text-brand-ink hover:underline" onClick={() => downloadExport(r.id)}>Download Export</button>
-                )}
-                {isStaff && r.status !== 'PENDING' && r.type !== 'DATA_ACCESS_REQUEST' && (r.remarks ?? '-')}
-              </div>
-            ),
-          },
-        ]}
+        columns={isStudent ? studentColumns : staffColumns}
       />
 
       <Modal open={raiseOpen} onClose={() => setRaiseOpen(false)} title="Raise Request">

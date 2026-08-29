@@ -194,7 +194,7 @@ function StaffBehaviourView() {
   );
 }
 
-function SelfBehaviourView({ studentId }: { studentId?: string }) {
+export function SelfBehaviourView({ studentId }: { studentId?: string }) {
   const { data } = useQuery({
     queryKey: ['behaviour', 'summary', studentId],
     queryFn: async () => (await api.get(`/behaviour/student/${studentId}/monthly-summary`)).data,

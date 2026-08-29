@@ -8,6 +8,7 @@ import InterventionsTab from './InterventionsTab';
 import SelfAssessmentTab from '@/pages/development/SelfAssessmentTab';
 import MarksTab from './MarksTab';
 import OverviewTab from './OverviewTab';
+import StudentPerformanceOverview from './StudentPerformanceOverview';
 import BatchesList from '@/pages/batches/BatchesList';
 import StudentsList from '@/pages/students/StudentsList';
 import ParentsList from '@/pages/students/ParentsList';
@@ -54,10 +55,20 @@ function PeopleTabsOverride({ sub, setSub }: { sub: string; setSub: (s: 'student
 
 export default function PerformanceHub() {
   const { user } = useAuth();
+  const isStudent = user?.role === 'STUDENT';
   const isFullStaff = user && FULL_STAFF_ROLES.includes(user.role);
   const isAccounts = user?.role === 'ACCOUNTS';
   const isPerformanceStaff = user && PERFORMANCE_STAFF_ROLES.includes(user.role);
   const canSeeCommunity = user && COMMUNITY_ROLES.includes(user.role);
+
+  if (isStudent) {
+    return (
+      <div>
+        <PageHeader title="Performance" subtitle="Your behaviour, presentations, self-assessments, and exam history." />
+        <StudentPerformanceOverview />
+      </div>
+    );
+  }
 
   const tabs = isFullStaff
     ? [

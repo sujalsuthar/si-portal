@@ -237,7 +237,7 @@ export default function ProjectDetail() {
     <div>
       <PageHeader
         title={project.name}
-        subtitle={`Intern Project · ${project.batch.name} · Group size: ${project.groupSize}`}
+        subtitle={`Intern Project · ${project.batch.name} · Group size: ${project.groupSize}${project.deadline ? ` · Deadline: ${new Date(project.deadline).toLocaleDateString()}` : ''}`}
         actions={
           isStaff && (
             <button className="btn-secondary" onClick={toggleGrading}>{project.gradingOpen ? 'Close Grading' : 'Reopen Grading'}</button>

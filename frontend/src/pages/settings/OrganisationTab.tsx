@@ -91,6 +91,7 @@ export default function OrganisationTab() {
           <label className="block"><span className="label">Address</span><input className="input" value={inst.address ?? ''} onChange={(e) => setInstForm({ ...inst, address: e.target.value })} /></label>
           <label className="block"><span className="label">Contact Email</span><input className="input" value={inst.contactEmail ?? ''} onChange={(e) => setInstForm({ ...inst, contactEmail: e.target.value })} /></label>
           <label className="block"><span className="label">Contact Phone</span><input className="input" value={inst.contactPhone ?? ''} onChange={(e) => setInstForm({ ...inst, contactPhone: e.target.value })} /></label>
+          <label className="block"><span className="label">Google Drive URL (for student task submissions)</span><input className="input" type="url" placeholder="https://drive.google.com/..." value={inst.googleDriveUrl ?? ''} onChange={(e) => setInstForm({ ...inst, googleDriveUrl: e.target.value })} /></label>
           <label className="block">
             <span className="label">Intern Manager (oversees all interns institute-wide)</span>
             <select

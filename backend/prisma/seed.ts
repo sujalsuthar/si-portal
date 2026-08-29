@@ -355,11 +355,11 @@ async function main() {
 
   // ---------------------------------------------------------------- Question bank & Exam
   const questionDefs: { subject: string; topic: string; text: string; type: QuestionType; options?: string[]; answer?: string; marks: number; rubric?: { criterion: string; maxMarks: number }[] }[] = [
-    { subject: 'JavaScript', topic: 'Fundamentals', text: 'Which keyword declares a block-scoped variable in JavaScript?', type: QuestionType.MCQ, options: ['var', 'let', 'function', 'global'], answer: 'let', marks: 2 },
+    { subject: 'JavaScript', topic: 'Fundamentals', text: 'Which keyword declares a block-scoped variable in JavaScript?', type: QuestionType.MCQ, options: ['var', 'let', 'function', 'global'], answer: 'let', marks: 1 },
     { subject: 'JavaScript', topic: 'Async', text: 'Explain what the "await" keyword does inside an async function.', type: QuestionType.LONG_ANSWER, marks: 5, rubric: [{ criterion: 'Mentions pausing execution', maxMarks: 3 }, { criterion: 'Mentions Promise settlement', maxMarks: 2 }] },
-    { subject: 'JavaScript', topic: 'Arrays', text: 'Which of these is true about Array.prototype.map()?', type: QuestionType.MCQ, options: ['It mutates the original array', 'It returns a new array', 'It only works on numbers', 'It requires a callback with no arguments'], answer: 'It returns a new array', marks: 2 },
+    { subject: 'JavaScript', topic: 'Arrays', text: 'Which of these is true about Array.prototype.map()?', type: QuestionType.MCQ, options: ['It mutates the original array', 'It returns a new array', 'It only works on numbers', 'It requires a callback with no arguments'], answer: 'It returns a new array', marks: 1 },
     { subject: 'JavaScript', topic: 'Closures', text: 'Explain what a closure is and give one practical use case.', type: QuestionType.LONG_ANSWER, marks: 10, rubric: [{ criterion: 'Correct definition', maxMarks: 5 }, { criterion: 'Valid practical example', maxMarks: 5 }] },
-    { subject: 'JavaScript', topic: 'ES6', text: 'Which array method is used to transform each element and return a new array?', type: QuestionType.MCQ, options: ['forEach', 'map', 'filter', 'reduce'], answer: 'map', marks: 2 },
+    { subject: 'JavaScript', topic: 'ES6', text: 'Which array method is used to transform each element and return a new array?', type: QuestionType.MCQ, options: ['forEach', 'map', 'filter', 'reduce'], answer: 'map', marks: 1 },
   ];
   const questions = [];
   for (const q of questionDefs) {

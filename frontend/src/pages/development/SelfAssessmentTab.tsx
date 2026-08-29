@@ -5,7 +5,7 @@ import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { Table, StatCard, Modal, Badge } from '@/components/ui';
 
-export default function SelfAssessmentTab() {
+export default function SelfAssessmentTab({ hideCompareCards = false }: { hideCompareCards?: boolean }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isStudent = user?.role === 'STUDENT';
@@ -119,7 +119,7 @@ export default function SelfAssessmentTab() {
           )}
         </div>
       )}
-      {compare && (
+      {compare && !hideCompareCards && (
         <div className="mb-5 form-grid-3">
           <StatCard label="Self-Confidence" value={`${compare.averageSelfConfidencePct}%`} />
           <StatCard label="Actual Performance" value={compare.averageActualPerformancePct != null ? `${compare.averageActualPerformancePct}%` : '-'} />

@@ -1,6 +1,7 @@
 ﻿import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { PageHeader, StatCard, Spinner, Badge, EmptyState } from '@/components/ui';
@@ -16,7 +17,7 @@ export default function Dashboard() {
   const { data: actionCenter } = useQuery({
     queryKey: ['dashboard', 'action-center'],
     queryFn: async () => (await api.get('/dashboard/action-center')).data,
-    enabled: !!user && ['STUDENT', 'FACULTY', 'ACADEMIC_ADMIN', 'SUPER_ADMIN'].includes(user.role),
+    enabled: !!user && user.role !== 'PARENT' && user.role !== 'STUDENT' && ['STUDENT', 'FACULTY', 'ACADEMIC_ADMIN', 'SUPER_ADMIN'].includes(user.role),
   });
 
   if (isLoading) return <Spinner />;
@@ -38,7 +39,7 @@ export default function Dashboard() {
       {user?.role === 'STUDENT' && <StudentDashboard data={data} />}
       {user?.role === 'PARENT' && <ParentDashboard data={data} />}
 
-      {actionCenter && <ActionCenterPanel actionCenter={actionCenter} />}
+      {actionCenter && user?.role !== 'STUDENT' && <ActionCenterPanel actionCenter={actionCenter} />}
 
       <DashboardCharts />
     </div>
@@ -107,7 +108,7 @@ function dayColorClasses(dayIndex: number, active: boolean) {
   return isRed ? 'bg-red-600 text-white dark:bg-red-700' : 'bg-blue-900 text-white dark:bg-blue-950';
 }
 
-function WeekCalendar({ weekSessions }: { weekSessions: any[] }) {
+function WeekCalendar({ weekSessions, readOnly = false }: { weekSessions: any[]; readOnly?: boolean }) {
   const today = new Date();
   const weekStart = new Date(today);
   weekStart.setHours(0, 0, 0, 0);
@@ -133,11 +134,17 @@ function WeekCalendar({ weekSessions }: { weekSessions: any[] }) {
               {d.sessions.length === 0 ? (
                 <p className="px-1 py-2 text-center text-xs text-ink-muted">-</p>
               ) : (
-                d.sessions.map((s: any) => (
-                  <Link key={s.id} to={`/sessions/${s.id}`} className="block rounded bg-surface-muted px-2 py-1.5 text-xs text-ink hover:bg-brand-100">
-                    {s.batchName} — {s.topic}
-                  </Link>
-                ))
+                d.sessions.map((s: any) =>
+                  readOnly ? (
+                    <div key={s.id} className="block rounded bg-surface-muted px-2 py-1.5 text-xs text-ink">
+                      {s.batchName} — {s.topic}
+                    </div>
+                  ) : (
+                    <Link key={s.id} to={`/sessions/${s.id}`} className="block rounded bg-surface-muted px-2 py-1.5 text-xs text-ink hover:bg-brand-100">
+                      {s.batchName} — {s.topic}
+                    </Link>
+                  ),
+                )
               )}
             </div>
           </div>
@@ -153,11 +160,17 @@ function WeekCalendar({ weekSessions }: { weekSessions: any[] }) {
               {d.sessions.length === 0 ? (
                 <p className="px-1 py-2 text-center text-[11px] text-ink-muted">-</p>
               ) : (
-                d.sessions.map((s: any) => (
-                  <Link key={s.id} to={`/sessions/${s.id}`} className="block truncate rounded bg-surface-muted px-1.5 py-1 text-[11px] text-ink hover:bg-brand-100" title={`${s.topic} - ${s.batchName}`}>
-                    {s.batchName}
-                  </Link>
-                ))
+                d.sessions.map((s: any) =>
+                  readOnly ? (
+                    <div key={s.id} className="block truncate rounded bg-surface-muted px-1.5 py-1 text-[11px] text-ink" title={`${s.topic} - ${s.batchName}`}>
+                      {s.batchName}
+                    </div>
+                  ) : (
+                    <Link key={s.id} to={`/sessions/${s.id}`} className="block truncate rounded bg-surface-muted px-1.5 py-1 text-[11px] text-ink hover:bg-brand-100" title={`${s.topic} - ${s.batchName}`}>
+                      {s.batchName}
+                    </Link>
+                  ),
+                )
               )}
             </div>
           </div>
@@ -349,31 +362,68 @@ function StudentDashboard({ data }: { data: any }) {
 }
 
 function ParentDashboard({ data }: { data: any }) {
+  const children = data?.children ?? [];
   return (
-    <div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {(data?.children ?? []).map((c: any) => (
-          <Link key={c.id} to={`/my/${c.id}`} className="card p-4 hover:shadow-md">
-            <p className="font-semibold text-ink">{c.name}</p>
-            <p className="text-xs text-ink-muted mb-3">{c.batch ?? 'No batch assigned'}</p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <Metric label="Attendance" value={c.attendancePct} />
-              <Metric label="Composite" value={c.composite.composite} />
-            </div>
-          </Link>
-        ))}
-      </div>
+    <div className="space-y-6">
+      {children.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {children.map((c: any) => (
+            <Link key={c.id} to={`/my/${c.id}`} className="card p-3 hover:shadow-md">
+              <p className="font-semibold text-ink">{c.name}</p>
+              <p className="text-xs text-ink-muted">{c.batch ?? 'No batch assigned'}</p>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                <Metric label="Attendance" value={c.attendancePct} />
+                <Metric label="Composite" value={c.composite.composite} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
-      <h2 className="mb-3 mt-6 text-sm font-semibold text-ink">Scheduled Sessions of the Week</h2>
-      <div className="card divide-y divide-edge">
-        {(data?.weekSessions ?? []).length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-muted">No sessions scheduled this week</p>}
-        {(data?.weekSessions ?? []).map((s: any) => (
-          <div key={s.id} className="flex items-center justify-between px-4 py-3 text-sm">
-            <span className="text-ink">{s.topic} - {s.batchName}</span>
-            <span className="text-xs text-ink-muted">{new Date(s.sessionDate).toLocaleString()}</span>
+      <WeekCalendar weekSessions={data?.weekSessions ?? []} readOnly />
+
+      {children.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-ink">Monthly Performance</h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {children.map((c: any) => (
+              <ParentChildMonthlyChart key={c.id} studentId={c.id} studentName={c.name} />
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ParentChildMonthlyChart({ studentId, studentName }: { studentId: string; studentName: string }) {
+  const { data } = useQuery({
+    queryKey: ['student', studentId, 'monthly-performance'],
+    queryFn: async () => (await api.get(`/students/${studentId}/monthly-performance`)).data,
+  });
+  const chartData = (data?.months ?? []).map((m: any) => ({
+    month: new Date(2000, m.month - 1, 1).toLocaleString(undefined, { month: 'short' }),
+    score: m.avgPercentage ?? 0,
+  }));
+
+  return (
+    <div className="card p-4">
+      <h3 className="mb-3 text-sm font-semibold text-ink">{studentName}</h3>
+      {chartData.length === 0 ? (
+        <p className="text-sm text-ink-muted">No performance data yet</p>
+      ) : (
+        <div style={{ height: 200 }} className="min-w-0 w-full">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Line type="monotone" dataKey="score" name="Avg %" stroke="rgb(var(--color-brand-600))" strokeWidth={2} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }

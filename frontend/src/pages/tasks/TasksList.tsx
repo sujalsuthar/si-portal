@@ -25,6 +25,12 @@ export default function TasksList() {
   const isStudent = user?.role === 'STUDENT';
   const isParent = user?.role === 'PARENT';
 
+  const { data: institution } = useQuery({
+    queryKey: ['institution'],
+    queryFn: async () => (await api.get('/settings/institution')).data,
+    enabled: isStudent,
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ['tasks', batchFilter],
     queryFn: async () => (await api.get('/tasks', { params: { pageSize: 50, ...(batchFilter ? { batchId: batchFilter } : {}) } })).data,
@@ -63,6 +69,19 @@ export default function TasksList() {
         subtitle={isStudent ? 'Track and submit your assigned tasks.' : 'Assign tasks, review submissions, and evaluate.'}
         actions={canCreate && <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Assign Task</button>}
       />
+      {isStudent && (
+        <div className="mb-4 card p-4">
+          <h3 className="text-sm font-semibold text-ink">Google Drive</h3>
+          <p className="mt-1 text-xs text-ink-muted">Access your shared Google Drive folder for task submissions and file uploads.</p>
+          {institution?.googleDriveUrl ? (
+            <a href={institution.googleDriveUrl} target="_blank" rel="noopener noreferrer" className="btn-primary mt-3 inline-flex">
+              Open Google Drive
+            </a>
+          ) : (
+            <p className="mt-2 text-sm text-ink-muted">Google Drive link has not been configured yet. Contact your institute.</p>
+          )}
+        </div>
+      )}
       {!isStudent && !isParent && (
         <div className="mb-3">
           <label className="inline-flex flex-row items-center gap-2 text-sm max-lg:w-full max-lg:flex-col max-lg:items-stretch">
@@ -79,7 +98,7 @@ export default function TasksList() {
         rows={data?.items ?? []}
         keyFn={(r: any) => r.id}
         columns={[
-          { header: 'Task', cell: (r: any) => <Link className="font-medium text-brand-ink hover:underline" to={`/tasks/${r.id}`}>{r.title}</Link> },
+          { header: 'Task', cell: (r: any) => isParent ? <span className="font-medium text-ink">{r.title}</span> : <Link className="font-medium text-brand-ink hover:underline" to={`/tasks/${r.id}`}>{r.title}</Link> },
           ...(!isStudent && !isParent ? [{ header: 'Batch', cell: (r: any) => r.batch?.name ?? '-' }] : []),
           { header: 'Due Date', cell: (r: any) => new Date(r.dueDate).toDateString() },
           { header: 'Points', cell: (r: any) => r.points },

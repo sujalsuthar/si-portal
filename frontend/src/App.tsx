@@ -20,6 +20,7 @@ import ExamsList from '@/pages/exams/ExamsList';
 import ExamDetail from '@/pages/exams/ExamDetail';
 import TakeExam from '@/pages/exams/TakeExam';
 import QuestionBank from '@/pages/exams/QuestionBank';
+import PaperLibrary from '@/pages/exams/PaperLibrary';
 import MarkSheet from '@/pages/exams/MarkSheet';
 import TasksList from '@/pages/tasks/TasksList';
 import TaskDetail from '@/pages/tasks/TaskDetail';
@@ -87,6 +88,7 @@ export default function App() {
           </Route>
           <Route element={<ProtectedRoute roles={STAFF} />}>
             <Route path="/exams/questions" element={<QuestionBank />} />
+            <Route path="/library" element={<PaperLibrary />} />
           </Route>
           <Route element={<ProtectedRoute roles={NOT_PARENT.filter((r) => r !== 'STUDENT')} />}>
             <Route path="/exams/:id/marksheet" element={<MarkSheet />} />
@@ -121,9 +123,7 @@ export default function App() {
             <Route path="/reports" element={<ReportsPage />} />
           </Route>
           <Route path="/notifications" element={<NotificationsPage />} />
-          <Route element={<ProtectedRoute roles={['FACULTY']} />}>
-            <Route path="/calendar" element={<CalendarPage />} />
-          </Route>
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/settings/*" element={<SettingsHub />} />
 
           <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FACULTY']} />}>

@@ -9,6 +9,7 @@ export default function ProfilePasswordTab() {
   const { user, refreshMe } = useAuth();
   const sessionId = getStoredSessionId();
   const isParent = user?.role === 'PARENT';
+  const isStudent = user?.role === 'STUDENT';
   const { data: sessions } = useQuery({
     queryKey: ['sessions', user?.id],
     queryFn: async () => (await api.get('/auth/sessions')).data,
@@ -64,22 +65,40 @@ export default function ProfilePasswordTab() {
       {isParent ? (
         <div className="card p-4">
           <h2 className="mb-3 text-sm font-semibold text-ink">Contact</h2>
-          <p className="mb-3 text-xs text-ink-muted">The faculty member responsible for each of your children.</p>
-          <div className="space-y-2">
-            {(facultyContacts ?? []).map((c: any) => (
+          <p className="mb-3 text-xs text-ink-muted">Faculty and team contacts for your children.</p>
+          <div className="space-y-3">
+            {(facultyContacts?.children ?? []).map((c: any) => (
               <div key={c.studentId} className="rounded-lg border border-edge px-3 py-2 text-sm">
                 <p className="font-medium text-ink">{c.studentName}</p>
                 {c.faculty ? (
-                  <p className="text-xs text-ink-muted">{c.faculty.name} · {c.faculty.email}{c.faculty.phone ? ` · ${c.faculty.phone}` : ''}</p>
+                  <p className="text-xs text-ink-muted">{c.faculty.name}{c.faculty.phone ? ` · ${c.faculty.phone}` : ''}</p>
                 ) : (
                   <p className="text-xs text-ink-muted">No faculty assigned yet</p>
                 )}
               </div>
             ))}
-            {facultyContacts?.length === 0 && <p className="text-sm text-ink-muted">No linked children</p>}
+            {facultyContacts?.instituteContact?.phone && (
+              <div className="rounded-lg border border-edge px-3 py-2 text-sm">
+                <p className="font-medium text-ink">{facultyContacts.instituteContact.name}</p>
+                <p className="text-xs text-ink-muted">{facultyContacts.instituteContact.phone}</p>
+              </div>
+            )}
+            {(facultyContacts?.teamMembers ?? []).length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Team Members</p>
+                <div className="space-y-1">
+                  {facultyContacts.teamMembers.map((m: any, i: number) => (
+                    <div key={i} className="rounded-lg border border-edge px-3 py-2 text-sm">
+                      <p className="text-ink">{m.name}{m.phone ? ` · ${m.phone}` : ''}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!facultyContacts?.children?.length && <p className="text-sm text-ink-muted">No linked children</p>}
           </div>
         </div>
-      ) : (
+      ) : !isStudent ? (
         <div className="card p-4">
           <h2 className="mb-3 text-sm font-semibold text-ink">Change Password</h2>
           <p className="mb-3 text-xs text-ink-muted">Your current password is always required to make this change{user?.mfaEnabled ? ', along with a live authentication code' : ''}.</p>
@@ -93,29 +112,31 @@ export default function ProfilePasswordTab() {
             <button type="submit" disabled={submitting} className="btn-primary">{submitting ? 'Saving…' : 'Update Password'}</button>
           </form>
         </div>
-      )}
+      ) : null}
 
-      <div className="card p-4">
-        <h2 className="mb-3 text-sm font-semibold text-ink">Two-Factor Authentication</h2>
-        {user?.mfaEnabled ? (
-          <div className="space-y-3">
-            <p className="text-sm text-emerald-700 dark:text-emerald-400">Two-factor authentication is enabled on your account.</p>
-            <p className="text-xs text-ink-muted">Disabling it requires your password and a current code.</p>
-            <div className="form-grid">
-              <input className="input" type="password" placeholder="Current password" value={disableForm.currentPassword} onChange={(e) => setDisableForm((f) => ({ ...f, currentPassword: e.target.value }))} />
-              <input className="input" placeholder="Code" value={disableForm.code} onChange={(e) => setDisableForm((f) => ({ ...f, code: e.target.value }))} />
+      {!isParent && (
+        <div className="card p-4">
+          <h2 className="mb-3 text-sm font-semibold text-ink">Two-Factor Authentication</h2>
+          {user?.mfaEnabled ? (
+            <div className="space-y-3">
+              <p className="text-sm text-emerald-700 dark:text-emerald-400">Two-factor authentication is enabled on your account.</p>
+              <p className="text-xs text-ink-muted">Disabling it requires your password and a current code.</p>
+              <div className="form-grid">
+                <input className="input" type="password" placeholder="Current password" value={disableForm.currentPassword} onChange={(e) => setDisableForm((f) => ({ ...f, currentPassword: e.target.value }))} />
+                <input className="input" placeholder="Code" value={disableForm.code} onChange={(e) => setDisableForm((f) => ({ ...f, code: e.target.value }))} />
+              </div>
+              <button className="btn-danger" onClick={disableMfa}>Disable Two-Factor Authentication</button>
             </div>
-            <button className="btn-danger" onClick={disableMfa}>Disable Two-Factor Authentication</button>
-          </div>
-        ) : settingUpMfa ? (
-          <MfaSetupFlow onEnabled={() => { setSettingUpMfa(false); refreshMe(); }} />
-        ) : (
-          <div>
-            <p className="mb-3 text-sm text-ink-muted">Add an authenticator app as a second sign-in factor.</p>
-            <button className="btn-primary" onClick={() => setSettingUpMfa(true)}>Set Up Two-Factor Authentication</button>
-          </div>
-        )}
-      </div>
+          ) : settingUpMfa ? (
+            <MfaSetupFlow onEnabled={() => { setSettingUpMfa(false); refreshMe(); }} />
+          ) : (
+            <div>
+              <p className="mb-3 text-sm text-ink-muted">Add an authenticator app as a second sign-in factor.</p>
+              <button className="btn-primary" onClick={() => setSettingUpMfa(true)}>Set Up Two-Factor Authentication</button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="card p-4">
         <h2 className="mb-3 text-sm font-semibold text-ink">Current Session</h2>

@@ -301,7 +301,7 @@ export async function seedCyberSecurityDemo(prisma: PrismaClient) {
         type: QuestionType.MCQ,
         options: ['Confidentiality', 'Integrity', 'Availability', 'Non-repudiation'],
         answer: 'Integrity',
-        marks: 2,
+        marks: 1,
       },
       {
         subject: 'Cyber Security',
@@ -310,14 +310,14 @@ export async function seedCyberSecurityDemo(prisma: PrismaClient) {
         type: QuestionType.MCQ,
         options: ['Broken Access Control', 'Injection', 'Security Misconfiguration', 'Cryptographic Failures'],
         answer: 'Injection',
-        marks: 2,
+        marks: 1,
       },
       {
         subject: 'Cyber Security',
         topic: 'Network Security',
         text: 'Explain the difference between a firewall and an IDS.',
         type: QuestionType.LONG_ANSWER,
-        marks: 8,
+        marks: 10,
       },
       {
         subject: 'Cyber Security',
@@ -326,7 +326,7 @@ export async function seedCyberSecurityDemo(prisma: PrismaClient) {
         type: QuestionType.MCQ,
         options: ['Delete all logs', 'Limit attacker movement and damage', 'Publish a press release', 'Reinstall antivirus only'],
         answer: 'Limit attacker movement and damage',
-        marks: 2,
+        marks: 1,
       },
     ];
     const qRecords = [];

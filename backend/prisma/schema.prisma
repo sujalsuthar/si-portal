@@ -1397,15 +1397,16 @@ model RefundRequest {
 // ---------------------------------------------------------------------------
 
 model Project {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   batchId     String
-  batch       Batch    @relation(fields: [batchId], references: [id])
+  batch       Batch     @relation(fields: [batchId], references: [id])
   name        String
   scope       String?
   groupSize   Int
-  gradingOpen Boolean  @default(true)
+  deadline    DateTime?
+  gradingOpen Boolean   @default(true)
   createdById String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   groups  ProjectGroup[]
   members ProjectMember[]
@@ -1603,8 +1604,9 @@ model InstitutionProfile {
   name          String
   address       String?
   logoUrl       String?
-  contactEmail  String?
-  contactPhone  String?
+  contactEmail    String?
+  contactPhone    String?
+  googleDriveUrl  String?
   // Single Faculty member overseeing all interns institute-wide (4.1) — distinct from each
   // intern's own per-intern "Task Mentor" (Student.mentorFacultyId), which stays per-intern.
   internManagerId String?

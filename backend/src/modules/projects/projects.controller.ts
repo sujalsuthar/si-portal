@@ -16,6 +16,7 @@ const createSchema = z.object({
   name: z.string().min(1),
   scope: z.string().optional(),
   groupSize: z.number().int().positive(),
+  deadline: z.coerce.date().optional(),
 });
 
 /** Every group a member of this student's group can act on the group's own record. */

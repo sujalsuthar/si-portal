@@ -38,7 +38,9 @@ export default function StudentDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const canEdit = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN'].includes(user.role);
-  const canRecordConsent = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FACULTY', 'PARENT', 'STUDENT'].includes(user.role);
+  const isParentViewer = user?.role === 'PARENT';
+  const canRecordConsent = user && !isParentViewer && ['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FACULTY', 'STUDENT'].includes(user.role);
+  const parentProfile = isParentViewer ? (user?.profile as { firstName?: string; lastName?: string; phone?: string; altPhone?: string; permanentAddress?: string } | null) : null;
 
   const { data: student, isLoading: loadingStudent } = useQuery({
     queryKey: ['student', studentId],
@@ -48,21 +50,25 @@ export default function StudentDetail() {
   const { data: timeline, isLoading: loadingTimeline } = useQuery({
     queryKey: ['student', studentId, 'timeline'],
     queryFn: async () => (await api.get(`/students/${studentId}/timeline`)).data,
+    enabled: !isParentViewer,
   });
 
   const { data: gradeHistory } = useQuery({
     queryKey: ['grades', studentId, 'all'],
     queryFn: async () => (await api.get('/grades', { params: { studentId } })).data,
+    enabled: !isParentViewer,
   });
 
   const { data: monthlyPerformance } = useQuery({
     queryKey: ['student', studentId, 'monthly-performance'],
     queryFn: async () => (await api.get(`/students/${studentId}/monthly-performance`)).data,
+    enabled: !isParentViewer,
   });
 
   const { data: consents } = useQuery({
     queryKey: ['student', studentId, 'consent'],
     queryFn: async () => (await api.get(`/consent/${studentId}`)).data,
+    enabled: !isParentViewer && !!canRecordConsent,
   });
 
   async function grantConsent(consentType: 'DATA_PROCESSING' | 'PARENTAL') {
@@ -95,10 +101,38 @@ export default function StudentDetail() {
       <PageHeader
         title={`${student.firstName} ${student.lastName}`}
         subtitle={`${student.studentCode} · ${student.currentBatch?.name ?? 'No batch'}`}
-        actions={<Badge tone={student.status === 'ACTIVE' ? 'green' : 'slate'}>{student.status}</Badge>}
+        actions={!isParentViewer ? <Badge tone={student.status === 'ACTIVE' ? 'green' : 'slate'}>{student.status}</Badge> : undefined}
       />
 
       <div className="space-y-6">
+        {isParentViewer ? (
+          <>
+            <Section title="Parent Details">
+              <div className="card p-4 text-sm">
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <Row label="Name" value={parentProfile ? `${parentProfile.firstName ?? ''} ${parentProfile.lastName ?? ''}`.trim() : '-'} />
+                  <Row label="Mobile" value={parentProfile?.phone ?? '-'} />
+                  <Row label="Alt. Mobile" value={parentProfile?.altPhone ?? '-'} />
+                  <Row label="Permanent Address" value={parentProfile?.permanentAddress ?? '-'} />
+                </div>
+              </div>
+            </Section>
+            <Section title="Student Details">
+              <div className="card p-4 text-sm">
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <Row label="Name" value={`${student.firstName} ${student.lastName}`} />
+                  <Row label="Student ID" value={student.studentCode} />
+                  <Row label="Batch" value={student.currentBatch?.name ?? '-'} />
+                  <Row label="Date of Birth" value={student.dateOfBirth ? new Date(student.dateOfBirth).toDateString() : '-'} />
+                  <Row label="Gender" value={student.gender ?? '-'} />
+                  <Row label="Phone" value={student.phone ?? '-'} />
+                  <Row label="Current Address" value={student.address ?? '-'} />
+                </div>
+              </div>
+            </Section>
+          </>
+        ) : (
+          <>
         <Section title="1. Student Details Info">
           <StudentDetailsForm student={student} studentId={studentId} canEdit={!!canEdit} />
 
@@ -219,6 +253,8 @@ export default function StudentDetail() {
             </div>
           )}
         </Section>
+          </>
+        )}
       </div>
     </div>
   );

@@ -52,11 +52,28 @@ parentsRouter.get(
         studentId: link.student.id,
         studentName: `${link.student.firstName} ${link.student.lastName}`,
         faculty: faculty
-          ? { name: `${faculty.firstName} ${faculty.lastName}`, email: faculty.user.email, phone: faculty.phone }
+          ? { name: `${faculty.firstName} ${faculty.lastName}`, phone: faculty.phone }
           : null,
       };
     });
-    res.json(contacts);
+
+    const institution = await prisma.institutionProfile.findFirst({ orderBy: { createdAt: 'desc' } });
+    const teamMembers = await prisma.faculty.findMany({
+      where: { isActive: true },
+      select: { firstName: true, lastName: true, phone: true },
+      orderBy: { firstName: 'asc' },
+    });
+
+    res.json({
+      children: contacts,
+      instituteContact: institution?.contactPhone
+        ? { name: institution.name, phone: institution.contactPhone }
+        : null,
+      teamMembers: teamMembers.map((f) => ({
+        name: `${f.firstName} ${f.lastName}`,
+        phone: f.phone,
+      })),
+    });
   }),
 );
 
