@@ -1,9 +1,20 @@
-﻿import { useEffect, useState } from 'react';
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { PageHeader, Table, Modal, Badge, Spinner } from '@/components/ui';
+
+function matchesParentSearch(parent: any, q: string) {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  const parentBlob = `${parent.firstName ?? ''} ${parent.lastName ?? ''} ${parent.user?.email ?? ''} ${parent.phone ?? ''}`.toLowerCase();
+  if (parentBlob.includes(needle)) return true;
+  return (parent.students ?? []).some((link: any) => {
+    const s = link.student;
+    return `${s?.firstName ?? ''} ${s?.lastName ?? ''} ${s?.studentCode ?? ''}`.toLowerCase().includes(needle);
+  });
+}
 
 export default function ParentsList() {
   const [search, setSearch] = useState('');
@@ -15,13 +26,31 @@ export default function ParentsList() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['parents', debouncedSearch],
-    queryFn: async () => (await api.get('/parents', { params: { search: debouncedSearch, pageSize: 50 } })).data,
-    placeholderData: keepPreviousData,
+  // Prefer server search (fixed two-step lookup). If the API returns no rows for a
+  // student-name query, fall back to the full list and filter by linked students locally.
+  const { data: searched, isLoading: searchLoading, isFetching: searchFetching } = useQuery({
+    queryKey: ['parents', 'search', debouncedSearch],
+    queryFn: async () => (await api.get('/parents', { params: { search: debouncedSearch, pageSize: 100 } })).data,
   });
 
-  return (
+  const needFallback = !!debouncedSearch && !searchLoading && (searched?.items?.length ?? 0) === 0;
+
+  const { data: allParents, isFetching: fallbackFetching } = useQuery({
+    queryKey: ['parents', 'all'],
+    queryFn: async () => (await api.get('/parents', { params: { pageSize: 100 } })).data,
+    enabled: needFallback,
+  });
+
+  const displayRows = useMemo(() => {
+    if (!debouncedSearch) return searched?.items ?? [];
+    if ((searched?.items?.length ?? 0) > 0) {
+      return (searched?.items ?? []).filter((p: any) => matchesParentSearch(p, debouncedSearch));
+    }
+    return (allParents?.items ?? []).filter((p: any) => matchesParentSearch(p, debouncedSearch));
+  }, [searched, allParents, debouncedSearch]);
+
+  const isLoading = searchLoading || (needFallback && !allParents);
+  const isFetching = searchFetching || fallbackFetching;  return (
     <div>
       <PageHeader
         title="Parents & Guardians"
@@ -34,8 +63,8 @@ export default function ParentsList() {
         }
       />
       <Table
-        loading={isLoading && !data}
-        rows={data?.items ?? []}
+        loading={isLoading}
+        rows={displayRows}
         keyFn={(r: any) => r.id}
         columns={[
           { header: 'Name', cell: (r: any) => <button className="font-medium text-brand-ink hover:underline" onClick={() => setViewingId(r.id)}>{r.firstName} {r.lastName}</button> },
