@@ -7,6 +7,7 @@ import { AuthContext } from '@/middleware/auth';
 import { prisma } from '@/lib/prisma';
 import { ApiError } from '@/utils/apiError';
 import { assertStudentAccess, getFacultyBatchIds } from '@/utils/scope';
+import { findStudentIdsBySearch } from '@/lib/parentSearch';
 
 export const searchRouter = Router();
 searchRouter.use(authenticate);
@@ -117,69 +118,34 @@ searchRouter.get(
           ],
         };
 
-    let parentWhere: Record<string, unknown>;
-    if (isFaculty) {
-      const batchIds = await getFacultyBatchIds(auth.facultyId!);
-      parentWhere = {
-        AND: [
-          {
-            students: {
-              some: {
-                student: {
-                  OR: [
-                    { currentBatchId: { in: batchIds } },
-                    { mentorFacultyId: auth.facultyId },
-                  ],
+    const studentScopeFilter = isFaculty ? await facultyStudentScope(auth) : undefined;
+
+    const linkedStudentIds = await findStudentIdsBySearch(q, studentScopeFilter);
+
+    const parentMatchOr = [
+      { firstName: ilike(q) },
+      { lastName: ilike(q) },
+      { phone: ilike(q) },
+      { user: { email: ilike(q) } },
+      ...(linkedStudentIds.length > 0
+        ? [{ students: { some: { studentId: { in: linkedStudentIds } } } }]
+        : []),
+    ];
+
+    const parentWhere = isFaculty
+      ? {
+          AND: [
+            {
+              students: {
+                some: {
+                  student: studentScopeFilter!,
                 },
               },
             },
-          },
-          {
-            OR: [
-              { firstName: ilike(q) },
-              { lastName: ilike(q) },
-              { phone: ilike(q) },
-              { user: { email: ilike(q) } },
-              {
-                students: {
-                  some: {
-                    student: {
-                      OR: [
-                        { firstName: ilike(q) },
-                        { lastName: ilike(q) },
-                        { studentCode: ilike(q) },
-                      ],
-                    },
-                  },
-                },
-              },
-            ],
-          },
-        ],
-      };
-    } else {
-      parentWhere = {
-        OR: [
-          { firstName: ilike(q) },
-          { lastName: ilike(q) },
-          { phone: ilike(q) },
-          { user: { email: ilike(q) } },
-          {
-            students: {
-              some: {
-                student: {
-                  OR: [
-                    { firstName: ilike(q) },
-                    { lastName: ilike(q) },
-                    { studentCode: ilike(q) },
-                  ],
-                },
-              },
-            },
-          },
-        ],
-      };
-    }
+            { OR: parentMatchOr },
+          ],
+        }
+      : { OR: parentMatchOr };
 
     const [students, faculty, parents, staff] = await Promise.all([
       prisma.student.findMany({

@@ -52,6 +52,8 @@ export async function buildParentListWhere(
   const orClauses: Prisma.ParentGuardianWhereInput[] = [
     { firstName: ilike(term) },
     { lastName: ilike(term) },
+    { phone: ilike(term) },
+    { user: { email: ilike(term) } },
   ];
 
   if (studentIds.length > 0) {
