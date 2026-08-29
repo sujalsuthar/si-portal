@@ -21,26 +21,69 @@ const createSchema = z.object({
   batchId: z.string().optional(),
 });
 
-/** Notifies every active student (and their parents) in scope — a specific batch, or everyone institute-wide. */
-async function notifyFeedAudience(post: { id: string; title: string; batchId: string | null }) {
+/** Notifies students, parents, and staff who can see this post in the Feed. */
+async function notifyFeedAudience(post: { id: string; title: string; batchId: string | null; authorId: string }) {
+  const link = '/feed';
+  const title = 'New feed post';
+  const message = post.title;
+
   const students = await prisma.student.findMany({
     where: { status: StudentStatus.ACTIVE, ...(post.batchId ? { currentBatchId: post.batchId } : {}) },
     select: { id: true, userId: true },
   });
   for (const student of students) {
-    await notify({
-      userId: student.userId,
-      category: NotificationCategory.ANNOUNCEMENT,
-      title: 'New announcement',
-      message: post.title,
-      link: `/feed`,
+    if (student.userId !== post.authorId) {
+      await notify({ userId: student.userId, category: NotificationCategory.ANNOUNCEMENT, title, message, link });
+    }
+    await notifyStudentParents(student.id, { category: NotificationCategory.ANNOUNCEMENT, title, message, link });
+  }
+
+  const staffRoles: RoleName[] = [
+    RoleName.SUPER_ADMIN,
+    RoleName.MANAGEMENT,
+    RoleName.ACADEMIC_ADMIN,
+    RoleName.FACULTY,
+    RoleName.ACCOUNTS,
+  ];
+
+  const notified = new Set<string>([post.authorId]);
+
+  if (!post.batchId) {
+    const staff = await prisma.user.findMany({
+      where: { role: { in: staffRoles }, isActive: true, id: { not: post.authorId } },
+      select: { id: true },
     });
-    await notifyStudentParents(student.id, {
-      category: NotificationCategory.ANNOUNCEMENT,
-      title: 'New announcement',
-      message: post.title,
-      link: `/feed`,
-    });
+    for (const user of staff) {
+      if (notified.has(user.id)) continue;
+      await notify({ userId: user.id, category: NotificationCategory.ANNOUNCEMENT, title, message, link });
+      notified.add(user.id);
+    }
+    return;
+  }
+
+  const instituteStaff = await prisma.user.findMany({
+    where: {
+      role: { in: [RoleName.SUPER_ADMIN, RoleName.MANAGEMENT, RoleName.ACADEMIC_ADMIN, RoleName.ACCOUNTS] },
+      isActive: true,
+      id: { not: post.authorId },
+    },
+    select: { id: true },
+  });
+  for (const user of instituteStaff) {
+    if (notified.has(user.id)) continue;
+    await notify({ userId: user.id, category: NotificationCategory.ANNOUNCEMENT, title, message, link });
+    notified.add(user.id);
+  }
+
+  const batchFaculty = await prisma.batchFacultyAssignment.findMany({
+    where: { batchId: post.batchId },
+    include: { faculty: { select: { userId: true } } },
+  });
+  for (const assignment of batchFaculty) {
+    const userId = assignment.faculty.userId;
+    if (notified.has(userId)) continue;
+    await notify({ userId, category: NotificationCategory.ANNOUNCEMENT, title, message, link });
+    notified.add(userId);
   }
 }
 
@@ -69,7 +112,7 @@ feedRouter.post(
     });
     await recordAudit({ entityType: 'FeedPost', entityId: post.id, action: 'CREATE', actorId: req.auth!.userId, newValue: data });
 
-    await notifyFeedAudience({ id: post.id, title: post.title, batchId: post.batchId });
+    await notifyFeedAudience({ id: post.id, title: post.title, batchId: post.batchId, authorId: req.auth!.userId });
 
     res.status(201).json(post);
   }),

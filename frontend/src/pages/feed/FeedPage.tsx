@@ -57,6 +57,7 @@ export default function FeedPage() {
       toast.success('Posted to Feed');
       closeCompose();
       queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
     }
