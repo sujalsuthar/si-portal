@@ -138,6 +138,27 @@ async function behaviourNetTrend(buckets: Bucket[], studentId: string) {
   );
 }
 
+async function monthlyExamPerformance(studentId: string) {
+  const year = new Date().getFullYear();
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+  const grades = await prisma.grade.findMany({
+    where: { studentId, status: GradeStatus.PUBLISHED, createdAt: { gte: yearStart, lte: yearEnd } },
+    select: { createdAt: true, percentage: true },
+  });
+  const buckets = Array.from({ length: 12 }, (_, i) => ({
+    label: new Date(2000, i, 1).toLocaleString('en-US', { month: 'short' }),
+    total: 0,
+    count: 0,
+  }));
+  for (const g of grades) {
+    const bucket = buckets[g.createdAt.getMonth()];
+    bucket.total += g.percentage;
+    bucket.count += 1;
+  }
+  return buckets.map((b) => ({ label: b.label, value: b.count ? round1(b.total / b.count) : 0 }));
+}
+
 /** Wraps a per-child trend fetcher into the multi-series {series, data} shape the frontend expects. */
 async function perChildSeries(
   parentId: string,
@@ -421,6 +442,13 @@ export const WIDGETS: Record<string, WidgetDef> = {
     roles: [RoleName.PARENT],
     fetch: async (auth) => perChildSeries(auth.parentId!, (studentId) => behaviourNetTrend(lastNMonths(6), studentId)),
   },
+  child_monthly_exam_performance: {
+    key: 'child_monthly_exam_performance',
+    label: "My children's monthly exam performance",
+    chartType: 'line',
+    roles: [RoleName.PARENT],
+    fetch: async (auth) => perChildSeries(auth.parentId!, (studentId) => monthlyExamPerformance(studentId)),
+  },
 
   // Student — self scope only.
   my_attendance_trend: {
@@ -454,6 +482,13 @@ export const WIDGETS: Record<string, WidgetDef> = {
       return { data: snapshots.map((s) => ({ label: s.period, value: round1(s.composite) })) };
     },
   },
+  my_monthly_exam_performance: {
+    key: 'my_monthly_exam_performance',
+    label: 'My monthly exam performance',
+    chartType: 'line',
+    roles: [RoleName.STUDENT],
+    fetch: async (auth) => ({ data: await monthlyExamPerformance(auth.studentId!) }),
+  },
 };
 
 export function catalogForRole(role: RoleName): WidgetMeta[] {
@@ -469,8 +504,8 @@ export function defaultWidgetKeysForRole(role: RoleName): string[] {
     MANAGEMENT: ['student_growth', 'batch_performance', 'fee_collection_trend', 'institute_attendance_trend', 'certificates_issued', 'intervention_overview'],
     ACADEMIC_ADMIN: ['sessions_conducted_trend', 'admin_attendance_trend', 'admin_task_completion_trend', 'batch_performance'],
     FACULTY: ['my_sessions_trend', 'my_batches_attendance_trend', 'my_batches_task_completion_trend', 'my_students_performance_distribution'],
-    PARENT: ['child_attendance_trend', 'child_exam_trend', 'child_task_completion_trend'],
-    STUDENT: ['my_attendance_trend', 'my_exam_trend', 'my_composite_trend'],
+    PARENT: ['child_attendance_trend', 'child_exam_trend', 'child_task_completion_trend', 'child_monthly_exam_performance'],
+    STUDENT: ['my_attendance_trend', 'my_exam_trend', 'my_composite_trend', 'my_monthly_exam_performance'],
   };
   return defaults[role] ?? [];
 }

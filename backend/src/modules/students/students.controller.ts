@@ -10,6 +10,7 @@ import { ApiError } from '@/utils/apiError';
 import { createUserAccount } from '@/modules/users/account.service';
 import { assertStudentAccess, getFacultyBatchIds, getParentStudentIds } from '@/utils/scope';
 import { computeStudentComposite } from '@/lib/scoring';
+import { studentSearchOrClause } from '@/lib/studentSearch';
 
 export const studentsRouter = Router();
 studentsRouter.use(authenticate);
@@ -56,31 +57,30 @@ studentsRouter.get(
     const courseId = req.query.courseId as string | undefined;
     const studentType = req.query.studentType as 'STUDENT' | 'INTERN' | undefined;
 
-    const where: Record<string, unknown> = {
-      ...(status ? { status } : {}),
-      ...(batchId ? { currentBatchId: batchId } : {}),
-      ...(courseId ? { courseId } : {}),
-      ...(studentType ? { internStatus: studentType === 'INTERN' ? { not: null } : null } : {}),
-      ...(search
-        ? {
-            OR: [
-              { firstName: { contains: search, mode: 'insensitive' as const } },
-              { lastName: { contains: search, mode: 'insensitive' as const } },
-              { studentCode: { contains: search, mode: 'insensitive' as const } },
-            ],
-          }
-        : {}),
-    };
+    const andClauses: Record<string, unknown>[] = [];
+    if (batchId) andClauses.push({ currentBatchId: batchId });
+    if (courseId) andClauses.push({ courseId });
+    if (studentType) andClauses.push({ internStatus: studentType === 'INTERN' ? { not: null } : null });
+    if (batchId && !status) {
+      andClauses.push({ status: StudentStatus.ACTIVE, user: { isActive: true } });
+    } else if (status) {
+      andClauses.push({ status });
+    }
+    if (search) andClauses.push(studentSearchOrClause(search));
 
     if (req.auth!.role === RoleName.FACULTY) {
       const batchIds = await getFacultyBatchIds(req.auth!.facultyId!);
-      where.OR = [{ currentBatchId: { in: batchIds } }, { mentorFacultyId: req.auth!.facultyId }];
       if (batchId && !batchIds.includes(batchId)) throw ApiError.forbidden('You are not assigned to this batch');
+      andClauses.push({
+        OR: [{ currentBatchId: { in: batchIds } }, { mentorFacultyId: req.auth!.facultyId }],
+      });
     }
     if (req.auth!.role === RoleName.PARENT) {
       const studentIds = await getParentStudentIds(req.auth!.parentId!);
-      where.id = { in: studentIds };
+      andClauses.push({ id: { in: studentIds } });
     }
+
+    const where = andClauses.length > 0 ? { AND: andClauses } : {};
 
     const [items, total] = await Promise.all([
       prisma.student.findMany({

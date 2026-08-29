@@ -23,7 +23,14 @@ export default function ExamsList() {
 
   async function onCreate(values: any) {
     try {
-      const res = await api.post('/exams', values);
+      const payload = {
+        title: values.title,
+        batchId: values.batchId,
+        subject: values.subject,
+        examDate: values.examDate ? values.examDate : undefined,
+        durationMinutes: values.durationMinutes === '' || values.durationMinutes == null ? undefined : Number(values.durationMinutes),
+      };
+      const res = await api.post('/exams', payload);
       toast.success('Exam created');
       setCreateOpen(false);
       reset();

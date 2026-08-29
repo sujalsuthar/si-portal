@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { RoleName, BatchStatus, AttendanceContext, AttendanceStatus, GradeStatus, TaskStatus, BackupType, ActionRequestStatus, StudentStatus } from '@prisma/client';
+import { RoleName, BatchStatus, AttendanceContext, AttendanceStatus, GradeStatus, TaskStatus, BackupType, ActionRequestStatus, StudentStatus, ConsentType } from '@prisma/client';
 import { z } from 'zod';
 import { asyncHandler } from '@/utils/asyncHandler';
 import { authenticate, authorize, ROLE_GROUPS } from '@/middleware/auth';
@@ -13,6 +13,9 @@ import { assertBatchAccess, getFacultyBatchIds, getParentStudentIds } from '@/ut
 import { getScoringConfig, computeStudentComposite } from '@/lib/scoring';
 import { env } from '@/config/env';
 import { computeOutstanding } from '@/modules/fees/fees.controller';
+import { uploadExcel } from '@/middleware/upload';
+import { excelField, parseExcelUpload } from '@/lib/excel';
+import { createUserAccount } from '@/modules/users/account.service';
 
 export const batchesRouter = Router();
 batchesRouter.use(authenticate);
@@ -339,6 +342,98 @@ batchesRouter.post(
     const { count } = await prisma.student.updateMany({ where: { id: { in: studentIds } }, data: { currentBatchId: batch.id, courseId: batch.courseId } });
     await recordAudit({ entityType: 'Batch', entityId: batch.id, action: 'BULK_ADD_STUDENTS', actorId: req.auth!.userId, newValue: { studentIds } });
     res.status(201).json({ addedCount: count });
+  }),
+);
+
+/** Bulk-import students from an Excel file into this batch (creates new or moves existing by email/code). */
+batchesRouter.post(
+  '/:id/students/bulk-import',
+  authorize(...ROLE_GROUPS.ADMIN_LIKE),
+  uploadExcel.single('file'),
+  asyncHandler(async (req, res) => {
+    if (!req.file?.buffer) throw ApiError.badRequest('Upload an Excel file (.xlsx)');
+    const batch = await prisma.batch.findUnique({ where: { id: req.params.id } });
+    if (!batch) throw ApiError.notFound('Batch not found');
+
+    const rows = await parseExcelUpload(req.file.buffer);
+    if (rows.length === 0) throw ApiError.badRequest('The spreadsheet is empty or missing a header row');
+
+    let created = 0;
+    let updated = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2;
+      const firstName = excelField(row, 'firstName', 'firstname', 'first name');
+      const lastName = excelField(row, 'lastName', 'lastname', 'last name');
+      const email = excelField(row, 'email', 'email address').toLowerCase();
+      const studentCode = excelField(row, 'studentCode', 'studentcode', 'student code', 'code');
+
+      if (!firstName || !lastName || !email || !studentCode) {
+        errors.push(`Row ${rowNum}: missing first name, last name, email, or student code`);
+        continue;
+      }
+
+      try {
+        const byCode = await prisma.student.findUnique({ where: { studentCode } });
+        const byEmail = await prisma.user.findUnique({ where: { email } });
+        const existingStudent =
+          byCode ?? (byEmail?.role === RoleName.STUDENT ? await prisma.student.findUnique({ where: { userId: byEmail.id } }) : null);
+
+        if (existingStudent) {
+          await prisma.student.update({
+            where: { id: existingStudent.id },
+            data: { currentBatchId: batch.id, courseId: batch.courseId, status: StudentStatus.ACTIVE },
+          });
+          await prisma.user.update({ where: { id: existingStudent.userId }, data: { isActive: true } });
+          updated++;
+          continue;
+        }
+
+        if (byEmail) {
+          errors.push(`Row ${rowNum}: email ${email} is already used by a non-student account`);
+          continue;
+        }
+
+        await prisma.$transaction(async (tx) => {
+          const { userId } = await createUserAccount(tx, email, RoleName.STUDENT);
+          const student = await tx.student.create({
+            data: {
+              userId,
+              studentCode,
+              firstName,
+              lastName,
+              courseId: batch.courseId,
+              currentBatchId: batch.id,
+              joiningDate: new Date(),
+            },
+          });
+          await tx.consentRecord.create({
+            data: {
+              studentId: student.id,
+              consentType: ConsentType.DATA_PROCESSING,
+              granted: true,
+              noticeVersion: 'v1',
+              grantedById: req.auth!.userId,
+            },
+          });
+        });
+        created++;
+      } catch (err) {
+        errors.push(`Row ${rowNum}: ${err instanceof Error ? err.message : 'Failed to import'}`);
+      }
+    }
+
+    await recordAudit({
+      entityType: 'Batch',
+      entityId: batch.id,
+      action: 'BULK_IMPORT_STUDENTS',
+      actorId: req.auth!.userId,
+      newValue: { created, updated, errorCount: errors.length },
+    });
+
+    res.status(201).json({ created, updated, errors });
   }),
 );
 

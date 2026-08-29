@@ -62,7 +62,16 @@ export default function InterventionsTab() {
         rows={cases ?? []}
         keyFn={(r: any) => r.id}
         columns={[
-          { header: 'Student', cell: (r: any) => <button className="text-brand-ink hover:underline font-medium" onClick={() => setDetail(r)}>{r.student.firstName} {r.student.lastName}</button> },
+          { header: 'Student', cell: (r: any) => {
+            const name = `${r.student.firstName} ${r.student.lastName}`;
+            const batch = r.student?.currentBatch?.name;
+            return (
+              <button className="text-brand-ink hover:underline font-medium" onClick={() => setDetail(r)}>
+                {batch ? `${name} · ${batch}` : name}
+              </button>
+            );
+          } },
+          { header: 'Batch', cell: (r: any) => r.student?.currentBatch?.name ?? '-' },
           { header: 'Trigger', cell: (r: any) => r.triggerType.replace(/_/g, ' ') },
           { header: 'Severity', cell: (r: any) => <Badge tone={SEVERITY_TONE[r.severity]}>{r.severity}</Badge> },
           { header: 'Assigned', cell: (r: any) => (r.assignedFaculty ? `${r.assignedFaculty.firstName} ${r.assignedFaculty.lastName}` : '-') },

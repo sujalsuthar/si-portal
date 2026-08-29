@@ -17,8 +17,10 @@ export default function BatchDetail() {
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [timetableOpen, setTimetableOpen] = useState(false);
   const [timetableDraft, setTimetableDraft] = useState<any[]>([]);
-  const [addMode, setAddMode] = useState<'existing' | 'new'>('existing');
+  const [addMode, setAddMode] = useState<'existing' | 'new' | 'excel'>('existing');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
   const [showRanking, setShowRanking] = useState(true);
 
   const { data: batch } = useQuery({ queryKey: ['batch', id], queryFn: async () => (await api.get(`/batches/${id}`)).data });
@@ -26,7 +28,7 @@ export default function BatchDetail() {
   const { data: students } = useQuery({ queryKey: ['batch', id, 'students'], queryFn: async () => (await api.get('/students', { params: { batchId: id, pageSize: 100 } })).data });
   const { data: unassignedStudents } = useQuery({
     queryKey: ['students', 'unassigned'],
-    queryFn: async () => (await api.get('/students', { params: { pageSize: 200 } })).data,
+    queryFn: async () => (await api.get('/students', { params: { pageSize: 200, status: 'ACTIVE' } })).data,
     enabled: bulkAddOpen,
   });
   const { data: ranking, isLoading: rankingLoading } = useQuery({
@@ -95,6 +97,29 @@ export default function BatchDetail() {
       queryClient.invalidateQueries({ queryKey: ['batch', id, 'summary'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
+    }
+  }
+
+  async function importExcel() {
+    if (!excelFile) return toast.error('Choose an Excel file first');
+    setImporting(true);
+    try {
+      const form = new FormData();
+      form.append('file', excelFile);
+      const res = await api.post(`/batches/${id}/students/bulk-import`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const { created, updated, errors } = res.data;
+      toast.success(`Import complete: ${created} created, ${updated} updated`);
+      if (errors?.length) toast.error(`${errors.length} row(s) skipped — check column headers (First Name, Last Name, Email, Student Code).`, { duration: 6000 });
+      setBulkAddOpen(false);
+      setExcelFile(null);
+      queryClient.invalidateQueries({ queryKey: ['batch', id, 'students'] });
+      queryClient.invalidateQueries({ queryKey: ['batch', id, 'summary'] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -215,13 +240,13 @@ export default function BatchDetail() {
       <Modal open={bulkAddOpen} onClose={() => setBulkAddOpen(false)} title="Bulk Add Students to Batch" wide>
         {canManage && (
           <div className="mb-4 flex gap-1 border-b border-edge">
-            {(['existing', 'new'] as const).map((t) => (
+            {(['existing', 'new', 'excel'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setAddMode(t)}
                 className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px ${addMode === t ? 'border-brand-600 text-brand-ink' : 'border-transparent text-ink-muted hover:text-ink'}`}
               >
-                {t === 'existing' ? 'Move existing students' : '+ New student'}
+                {t === 'existing' ? 'Move existing students' : t === 'new' ? '+ New student' : 'Upload Excel'}
               </button>
             ))}
           </div>
@@ -232,7 +257,7 @@ export default function BatchDetail() {
             <p className="mb-3 text-sm text-ink-muted">Select one or more students to move into this batch (and its course).</p>
             <div className="max-h-96 space-y-1 overflow-y-auto">
               {(unassignedStudents?.items ?? [])
-                .filter((s: any) => s.currentBatch?.id !== id)
+                .filter((s: any) => s.currentBatch?.id !== id && s.status === 'ACTIVE')
                 .map((s: any) => (
                   <label key={s.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-muted">
                     <input type="checkbox" checked={selectedStudentIds.includes(s.id)} onChange={() => toggleStudent(s.id)} />
@@ -246,7 +271,7 @@ export default function BatchDetail() {
               <button className="btn-primary" onClick={bulkAddStudents}>Add {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ''}</button>
             </div>
           </>
-        ) : (
+        ) : addMode === 'new' ? (
           <NewStudentForm
             batchId={id!}
             courseId={batch.courseId}
@@ -258,6 +283,25 @@ export default function BatchDetail() {
             }}
             onCancel={() => setBulkAddOpen(false)}
           />
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-ink-muted">
+              Upload an Excel file (.xlsx) with columns: <strong>First Name</strong>, <strong>Last Name</strong>, <strong>Email</strong>, <strong>Student Code</strong>.
+              Existing students (matched by code or email) are moved into this batch; new rows create accounts automatically.
+            </p>
+            <input
+              type="file"
+              accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              className="input"
+              onChange={(e) => setExcelFile(e.target.files?.[0] ?? null)}
+            />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" onClick={() => setBulkAddOpen(false)}>Cancel</button>
+              <button className="btn-primary" onClick={importExcel} disabled={importing || !excelFile}>
+                {importing ? 'Importing…' : 'Import Students'}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
 

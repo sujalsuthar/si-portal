@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -8,36 +8,78 @@ import { PageHeader, Table, Modal, Badge } from '@/components/ui';
 
 const DEFAULT_MARKS: Record<string, number> = { MCQ: 1, LONG_ANSWER: 10 };
 
+type QuestionRow = { id: string; questionText: string; marks: number; questionType: string; usageCount?: number };
+
 export default function QuestionBank() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedMap, setSelectedMap] = useState<Record<string, QuestionRow>>({});
+  const [mcqOptions, setMcqOptions] = useState(['', '', '', '']);
+  const [correctAnswer, setCorrectAnswer] = useState('');
 
   const { data, isLoading } = useQuery({ queryKey: ['questions', search], queryFn: async () => (await api.get('/questions', { params: { search, pageSize: 50 } })).data });
   const { register, handleSubmit, reset, watch, setValue } = useForm<Record<string, any>>({ defaultValues: { questionType: 'MCQ', marks: DEFAULT_MARKS.MCQ } });
   const questionType = watch('questionType');
 
-  const questions = data?.items ?? [];
-  const selectedQuestions = questions.filter((q: any) => selectedIds.includes(q.id));
-  const totalSelectedMarks = selectedQuestions.reduce((s: number, q: any) => s + q.marks, 0);
+  const questions: QuestionRow[] = data?.items ?? [];
+  const selectedQuestions = useMemo(() => Object.values(selectedMap), [selectedMap]);
+  const totalSelectedMarks = selectedQuestions.reduce((s, q) => s + q.marks, 0);
 
-  function toggleSelected(id: string) {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  function toggleSelected(q: QuestionRow) {
+    setSelectedMap((prev) => {
+      if (prev[q.id]) {
+        const next = { ...prev };
+        delete next[q.id];
+        return next;
+      }
+      return { ...prev, [q.id]: q };
+    });
   }
 
   function onTypeChange(type: string) {
     setValue('questionType', type);
     setValue('marks', DEFAULT_MARKS[type] ?? 1);
+    if (type === 'MCQ') {
+      setMcqOptions(['', '', '', '']);
+      setCorrectAnswer('');
+    }
+  }
+
+  function updateOption(index: number, value: string) {
+    setMcqOptions((prev) => prev.map((opt, i) => (i === index ? value : opt)));
+  }
+
+  function addOption() {
+    setMcqOptions((prev) => [...prev, '']);
+  }
+
+  function removeOption(index: number) {
+    setMcqOptions((prev) => {
+      if (prev.length <= 2) return prev;
+      const removed = prev[index];
+      const next = prev.filter((_, i) => i !== index);
+      if (correctAnswer === removed) setCorrectAnswer('');
+      return next;
+    });
   }
 
   async function onCreate(values: any) {
     try {
+      const options = questionType === 'MCQ' ? mcqOptions.map((o) => o.trim()).filter(Boolean) : undefined;
+      if (questionType === 'MCQ') {
+        if (!options || options.length < 2) return toast.error('Add at least 2 options');
+        if (!correctAnswer.trim()) return toast.error('Select the correct answer');
+        if (!options.includes(correctAnswer.trim())) return toast.error('Correct answer must match one option exactly');
+      }
       const payload = {
-        ...values,
+        questionText: values.questionText,
+        topic: values.topic || undefined,
+        questionType: values.questionType,
         marks: Number(values.marks),
-        options: values.questionType === 'MCQ' ? String(values.optionsRaw ?? '').split(',').map((s: string) => s.trim()).filter(Boolean) : undefined,
+        options,
+        correctAnswer: questionType === 'MCQ' ? correctAnswer.trim() : undefined,
         rubric:
           values.questionType === 'LONG_ANSWER' && values.rubricRaw
             ? String(values.rubricRaw)
@@ -50,12 +92,12 @@ export default function QuestionBank() {
                 })
             : undefined,
       };
-      delete payload.optionsRaw;
-      delete payload.rubricRaw;
       await api.post('/questions', payload);
       toast.success('Question added');
       setCreateOpen(false);
       reset({ questionType: 'MCQ', marks: DEFAULT_MARKS.MCQ });
+      setMcqOptions(['', '', '', '']);
+      setCorrectAnswer('');
       queryClient.invalidateQueries({ queryKey: ['questions'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -80,16 +122,16 @@ export default function QuestionBank() {
           <Table
             loading={isLoading}
             rows={questions}
-            keyFn={(r: any) => r.id}
+            keyFn={(r) => r.id}
             columns={[
               {
                 header: '',
-                cell: (r: any) => <input type="checkbox" checked={selectedIds.includes(r.id)} onChange={() => toggleSelected(r.id)} />,
+                cell: (r) => <input type="checkbox" checked={!!selectedMap[r.id]} onChange={() => toggleSelected(r)} />,
               },
-              { header: 'Question', cell: (r: any) => <span className="line-clamp-2 max-w-md">{r.questionText}</span> },
-              { header: 'Type', cell: (r: any) => <Badge tone={r.questionType === 'MCQ' ? 'blue' : 'slate'}>{r.questionType.replace('_', ' ')}</Badge> },
-              { header: 'Marks', cell: (r: any) => r.marks },
-              { header: 'Used', cell: (r: any) => r.usageCount },
+              { header: 'Question', cell: (r) => <span className="line-clamp-2 max-w-md">{r.questionText}</span> },
+              { header: 'Type', cell: (r) => <Badge tone={r.questionType === 'MCQ' ? 'blue' : 'slate'}>{r.questionType.replace('_', ' ')}</Badge> },
+              { header: 'Marks', cell: (r) => r.marks },
+              { header: 'Used', cell: (r) => r.usageCount ?? 0 },
             ]}
           />
         </div>
@@ -98,10 +140,10 @@ export default function QuestionBank() {
           <BuildPaperPanel
             selectedQuestions={selectedQuestions}
             totalSelectedMarks={totalSelectedMarks}
-            onRemove={(qid) => setSelectedIds((prev) => prev.filter((x) => x !== qid))}
-            onClear={() => setSelectedIds([])}
+            onRemove={(qid) => setSelectedMap((prev) => { const next = { ...prev }; delete next[qid]; return next; })}
+            onClear={() => setSelectedMap({})}
             onDone={(examId) => {
-              setSelectedIds([]);
+              setSelectedMap({});
               queryClient.invalidateQueries({ queryKey: ['exams'] });
               navigate(`/exams/${examId}`);
             }}
@@ -121,13 +163,42 @@ export default function QuestionBank() {
                 <option value="LONG_ANSWER">Long Answer (rubric-marked)</option>
               </select>
             </label>
-            <label className="block"><span className="label">Marks</span><input className="input" type="number" {...register('marks', { required: true })} /></label>
+            <label className="block"><span className="label">Marks</span>
+              <select className="input" {...register('marks', { required: true })}>
+                <option value={1}>1</option>
+                <option value={10}>10</option>
+              </select>
+            </label>
           </div>
           {questionType === 'MCQ' && (
-            <>
-              <label className="block"><span className="label">Options (comma-separated)</span><input className="input" {...register('optionsRaw')} placeholder="var, let, function, global" /></label>
-              <label className="block"><span className="label">Correct Answer</span><input className="input" {...register('correctAnswer')} placeholder="Must match one option exactly" /></label>
-            </>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="label mb-0">Options</span>
+                <button type="button" className="text-xs text-brand-ink hover:underline" onClick={addOption}>+ Add option</button>
+              </div>
+              {mcqOptions.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    className="input flex-1"
+                    value={opt}
+                    placeholder={`Option ${i + 1}`}
+                    onChange={(e) => updateOption(i, e.target.value)}
+                  />
+                  {mcqOptions.length > 2 && (
+                    <button type="button" className="text-xs text-red-600 dark:text-red-400" onClick={() => removeOption(i)}>Remove</button>
+                  )}
+                </div>
+              ))}
+              <label className="block">
+                <span className="label">Correct Answer</span>
+                <select className="input" value={correctAnswer} onChange={(e) => setCorrectAnswer(e.target.value)}>
+                  <option value="">Select correct option…</option>
+                  {mcqOptions.map((o) => o.trim()).filter(Boolean).map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
           )}
           {questionType === 'LONG_ANSWER' && (
             <label className="block">
@@ -152,7 +223,7 @@ function BuildPaperPanel({
   onClear,
   onDone,
 }: {
-  selectedQuestions: any[];
+  selectedQuestions: QuestionRow[];
   totalSelectedMarks: number;
   onRemove: (id: string) => void;
   onClear: () => void;
@@ -168,11 +239,13 @@ function BuildPaperPanel({
     queryKey: ['paper-library'],
     queryFn: async () => (await api.get('/exams/papers/library')).data,
   });
-  const { data: exams } = useQuery({
+  const { data: exams, isLoading: examsLoading } = useQuery({
     queryKey: ['exams', 'all'],
     queryFn: async () => (await api.get('/exams', { params: { pageSize: 100 } })).data,
     enabled: mode === 'exam',
   });
+
+  const examItems = exams?.items ?? [];
 
   async function savePaper() {
     if (selectedQuestions.length === 0) return toast.error('Select at least one question from the bank');
@@ -180,11 +253,9 @@ function BuildPaperPanel({
 
     setSubmitting(true);
     try {
+      const questionIds = selectedQuestions.map((q) => q.id);
       if (mode === 'library') {
-        await api.post('/exams/papers/library', {
-          name: paperName,
-          questionIds: selectedQuestions.map((q: any) => q.id),
-        });
+        await api.post('/exams/papers/library', { name: paperName, questionIds });
         toast.success('Paper saved to library');
         setPaperName('');
         onClear();
@@ -194,7 +265,7 @@ function BuildPaperPanel({
         if (!examId) return toast.error('Select an exam');
         const paperRes = await api.post(`/exams/${examId}/papers`, { name: paperName });
         const paperId = paperRes.data.id;
-        for (const q of selectedQuestions) await api.post(`/exams/papers/${paperId}/questions`, { questionId: q.id });
+        for (const qid of questionIds) await api.post(`/exams/papers/${paperId}/questions`, { questionId: qid });
         toast.success('Paper attached to exam');
         onDone(examId);
       }
@@ -219,9 +290,14 @@ function BuildPaperPanel({
         <label className="block">
           <span className="label">Exam</span>
           <select className="input" value={examId} onChange={(e) => setExamId(e.target.value)}>
-            <option value="">Select…</option>
-            {exams?.items?.map((e: any) => <option key={e.id} value={e.id}>{e.title} ({e.batch?.name})</option>)}
+            <option value="">{examsLoading ? 'Loading exams…' : 'Select…'}</option>
+            {examItems.map((e: any) => (
+              <option key={e.id} value={e.id}>{e.title} ({e.batch?.name ?? 'No batch'})</option>
+            ))}
           </select>
+          {!examsLoading && examItems.length === 0 && (
+            <p className="mt-1 text-xs text-ink-muted">No exams available. Create an exam first, then attach a paper.</p>
+          )}
         </label>
       )}
 
@@ -234,7 +310,7 @@ function BuildPaperPanel({
         </div>
         <div className="max-h-40 space-y-1 overflow-y-auto">
           {selectedQuestions.length === 0 && <p className="text-xs text-ink-muted">Tick questions from the list to add them here.</p>}
-          {selectedQuestions.map((q: any) => (
+          {selectedQuestions.map((q) => (
             <div key={q.id} className="flex items-center justify-between gap-2 rounded bg-surface-muted px-2 py-1 text-xs">
               <span className="line-clamp-1">{q.questionText}</span>
               <button type="button" className="text-red-600 dark:text-red-400 shrink-0" onClick={() => onRemove(q.id)}>✕</button>

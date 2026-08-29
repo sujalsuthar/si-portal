@@ -221,6 +221,16 @@ projectsRouter.post(
       throw ApiError.forbidden('Ranking is closed — group composition cannot be changed');
     }
 
+    const student = await prisma.student.findUnique({ where: { id: studentId } });
+    if (!student) throw ApiError.notFound('Student not found');
+    if (student.currentBatchId !== project.batchId) {
+      throw ApiError.badRequest('Student must belong to this project batch');
+    }
+    if (student.status !== 'ACTIVE') throw ApiError.badRequest('Only active students can be added to a project');
+    if (project.kind === ProjectKind.INTERN && !student.internStatus) {
+      throw ApiError.badRequest('Intern projects can only include intern students');
+    }
+
     const existingMembership = await prisma.projectMember.findFirst({ where: { studentId, projectId: req.params.id } });
     if (existingMembership) throw ApiError.conflict('This student already belongs to a group in this project');
 

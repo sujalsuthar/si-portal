@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { PageHeader, EmptyState, Spinner } from '@/components/ui';
@@ -45,16 +44,12 @@ function PreferencesPanel() {
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [showPreferences, setShowPreferences] = useState(false);
   const { data, isLoading } = useQuery({ queryKey: ['notifications', 'page'], queryFn: async () => (await api.get('/notifications', { params: { pageSize: 50 } })).data });
 
-  async function openNotification(n: { id: string; isRead: boolean; link?: string | null }) {
-    if (!n.isRead) {
-      await api.patch(`/notifications/${n.id}/read`);
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    }
-    if (n.link) navigate(n.link);
+  async function markRead(id: string) {
+    await api.patch(`/notifications/${id}/read`);
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
   }
 
   return (
@@ -72,13 +67,18 @@ export default function NotificationsPage() {
       ) : (
         <div className="card divide-y divide-edge">
           {data.items.map((n: any) => (
-            <button key={n.id} onClick={() => openNotification(n)} className={`block w-full px-4 py-3 text-left text-sm hover:bg-surface-muted ${n.isRead ? '' : 'bg-brand-600/10'}`}>
+            <div key={n.id} className={`px-4 py-3 text-sm ${n.isRead ? '' : 'bg-brand-600/10'}`}>
               <div className="flex items-center justify-between max-lg:flex-col max-lg:items-start max-lg:gap-1">
                 <p className="min-w-0 break-words font-medium text-ink">{n.title}</p>
                 <span className="shrink-0 text-xs text-ink-muted">{new Date(n.createdAt).toLocaleString()}</span>
               </div>
               <p className="mt-0.5 text-ink-muted">{n.message}</p>
-            </button>
+              {!n.isRead && (
+                <button type="button" className="mt-2 text-xs text-brand-ink hover:underline" onClick={() => markRead(n.id)}>
+                  Mark as read
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}

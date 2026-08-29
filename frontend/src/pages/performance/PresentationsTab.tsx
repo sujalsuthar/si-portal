@@ -74,6 +74,24 @@ export default function PresentationsTab() {
     return r.batch?.name ?? r.student?.currentBatch?.name ?? '-';
   }
 
+  function formatStudentWithBatch(r: any) {
+    const name = `${r.student.firstName} ${r.student.lastName}`;
+    const batch = batchLabel(r);
+    return batch !== '-' ? `${name} · ${batch}` : name;
+  }
+
+  const columns = [
+    { header: 'Student', cell: (r: any) => formatStudentWithBatch(r) },
+    { header: 'Batch', cell: (r: any) => batchLabel(r) },
+    { header: 'Topic', cell: (r: any) => r.topic },
+    { header: 'Date', cell: (r: any) => new Date(r.scheduledDate).toDateString() },
+    { header: 'Status', cell: (r: any) => <Badge tone={r.status === 'COMPLETED' ? 'green' : r.status === 'CANCELLED' ? 'red' : 'blue'}>{r.status}</Badge> },
+    { header: 'Score', cell: (r: any) => (r.totalScore != null ? `${r.totalScore}/60` : '-') },
+    ...(isStaff
+      ? [{ header: 'Actions', cell: (r: any) => (r.status !== 'CANCELLED' ? <button className="text-xs text-brand-ink hover:underline" onClick={() => openScore(r)}>{r.status === 'COMPLETED' ? 'Edit Score' : 'Score'}</button> : null) }]
+      : []),
+  ];
+
   return (
     <div>
       {isStaff && (
@@ -89,17 +107,7 @@ export default function PresentationsTab() {
         loading={isLoading}
         rows={data?.items ?? []}
         keyFn={(r: any) => r.id}
-        columns={[
-          { header: 'Student', cell: (r: any) => `${r.student.firstName} ${r.student.lastName}` },
-          { header: 'Batch', cell: (r: any) => batchLabel(r) },
-          { header: 'Topic', cell: (r: any) => r.topic },
-          { header: 'Date', cell: (r: any) => new Date(r.scheduledDate).toDateString() },
-          { header: 'Status', cell: (r: any) => <Badge tone={r.status === 'COMPLETED' ? 'green' : r.status === 'CANCELLED' ? 'red' : 'blue'}>{r.status}</Badge> },
-          { header: 'Score', cell: (r: any) => (r.totalScore != null ? `${r.totalScore}/60` : '-') },
-          ...(isStaff
-            ? [{ header: 'Actions', cell: (r: any) => (r.status !== 'CANCELLED' ? <button className="text-xs text-brand-ink hover:underline" onClick={() => openScore(r)}>{r.status === 'COMPLETED' ? 'Edit Score' : 'Score'}</button> : null) }]
-            : []),
-        ]}
+        columns={columns}
       />
 
       <Modal open={scheduleOpen} onClose={() => setScheduleOpen(false)} title="Schedule Presentation">

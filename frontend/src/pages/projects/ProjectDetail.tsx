@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { PageHeader, Badge, Spinner, Modal } from '@/components/ui';
+import { StudentSearchPicker } from '@/components/StudentSearchPicker';
 
 export default function ProjectDetail() {
   const { id } = useParams();
@@ -14,7 +15,8 @@ export default function ProjectDetail() {
   const isAdmin = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN'].includes(user.role);
   const myStudentId = user?.role === 'STUDENT' ? user.profile?.id : undefined;
   const [addMemberGroupId, setAddMemberGroupId] = useState<string | null>(null);
-  const [studentSearch, setStudentSearch] = useState('');
+  const [pickStudentId, setPickStudentId] = useState('');
+  const [pickStudentLabel, setPickStudentLabel] = useState('');
   const [markGroupId, setMarkGroupId] = useState<string | null>(null);
   const [markId, setMarkId] = useState<string | null>(null);
   const [markForm, setMarkForm] = useState({ marksObtained: '', maxMarks: '100' });
@@ -23,11 +25,6 @@ export default function ProjectDetail() {
   const [repoEdits, setRepoEdits] = useState<Record<string, string>>({});
 
   const { data: project, isLoading } = useQuery({ queryKey: ['project', id], queryFn: async () => (await api.get(`/projects/${id}`)).data });
-  const { data: studentResults } = useQuery({
-    queryKey: ['students', 'search', studentSearch],
-    queryFn: async () => (await api.get('/students', { params: { search: studentSearch, batchId: project?.batchId, pageSize: 10 } })).data,
-    enabled: !!addMemberGroupId && studentSearch.length > 1,
-  });
 
   if (isLoading || !project) return <Spinner />;
 
@@ -91,7 +88,8 @@ export default function ProjectDetail() {
       await api.post(`/projects/${id}/groups/${addMemberGroupId}/members`, { studentId });
       toast.success('Member added');
       setAddMemberGroupId(null);
-      setStudentSearch('');
+      setPickStudentId('');
+      setPickStudentLabel('');
       queryClient.invalidateQueries({ queryKey: ['project', id] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -226,7 +224,7 @@ export default function ProjectDetail() {
 
         {isStaff && !gradingLocked && (
           <div className="flex flex-wrap gap-2 text-xs">
-            {groupCanAddMember && <button type="button" className="text-brand-ink hover:underline" onClick={() => setAddMemberGroupId(g.id)}>+ Add Student</button>}
+            {groupCanAddMember && <button type="button" className="text-brand-ink hover:underline" onClick={() => { setAddMemberGroupId(g.id); setPickStudentId(''); setPickStudentLabel(''); }}>+ Add Student</button>}
             <button type="button" className="text-brand-ink hover:underline" onClick={() => openGrade(g)}>{g.marks.length > 0 ? 'Edit Grade' : 'Grade Group'}</button>
           </div>
         )}
@@ -264,12 +262,21 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      <Modal open={!!addMemberGroupId} onClose={() => setAddMemberGroupId(null)} title="Add Student">
-        <input className="input mb-2" placeholder="Search student in this batch…" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
-        <div className="max-h-48 overflow-y-auto">
-          {(studentResults?.items ?? []).map((s: any) => (
-            <button key={s.id} className="block w-full px-2 py-1.5 text-left text-sm hover:bg-surface-muted" onClick={() => addMember(s.id)}>{s.firstName} {s.lastName}</button>
-          ))}
+      <Modal open={!!addMemberGroupId} onClose={() => { setAddMemberGroupId(null); setPickStudentId(''); setPickStudentLabel(''); }} title="Add Student">
+        <StudentSearchPicker
+          studentId={pickStudentId}
+          selectedLabel={pickStudentLabel}
+          batchId={project.batchId}
+          studentType={project.kind === 'INTERN' ? 'INTERN' : 'STUDENT'}
+          excludeIds={singleGroup?.members.map((m: any) => m.student.id) ?? []}
+          enabled={!!addMemberGroupId}
+          placeholder="Search student in this batch…"
+          onSelect={(studentId, label) => { setPickStudentId(studentId); setPickStudentLabel(label); }}
+          onClear={() => { setPickStudentId(''); setPickStudentLabel(''); }}
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" className="btn-secondary" onClick={() => { setAddMemberGroupId(null); setPickStudentId(''); setPickStudentLabel(''); }}>Cancel</button>
+          <button type="button" className="btn-primary" disabled={!pickStudentId} onClick={() => addMember(pickStudentId)}>Add to Group</button>
         </div>
       </Modal>
 

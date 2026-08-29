@@ -45,13 +45,19 @@ export default function TasksList() {
 
   async function onCreate(values: any) {
     try {
+      if (!values.batchId) return toast.error('Select a batch');
+      if (!values.dueDate) return toast.error('Select a due date');
       await api.post('/tasks', {
-        ...values,
+        title: values.title,
+        description: values.description || undefined,
+        instructions: values.instructions || undefined,
+        batchId: values.batchId,
+        dueDate: values.dueDate,
         points: Number(values.points || 0),
-        gracePeriodHours: values.gracePeriodHours ? Number(values.gracePeriodHours) : undefined,
-        lateDeductionRate: values.lateDeductionRate ? Number(values.lateDeductionRate) : 0,
+        gracePeriodHours: values.gracePeriodHours === '' || values.gracePeriodHours == null ? undefined : Number(values.gracePeriodHours),
+        lateDeductionRate: values.lateDeductionRate === '' || values.lateDeductionRate == null ? 0 : Number(values.lateDeductionRate),
       });
-      toast.success('Task assigned');
+      toast.success('Task assigned to the full batch');
       setCreateOpen(false);
       reset();
       queryClient.invalidateQueries({ queryKey: ['tasks'] });

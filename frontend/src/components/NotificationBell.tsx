@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -15,7 +15,6 @@ interface NotificationItem {
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['notifications', 'bell'],
@@ -45,13 +44,9 @@ export default function NotificationBell() {
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
   }
 
-  async function openNotification(n: NotificationItem) {
-    if (!n.isRead) {
-      await api.patch(`/notifications/${n.id}/read`);
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    }
-    setOpen(false);
-    if (n.link) navigate(n.link);
+  async function markRead(id: string) {
+    await api.patch(`/notifications/${id}/read`);
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
   }
 
   return (
@@ -88,16 +83,21 @@ export default function NotificationBell() {
                 <p className="px-4 py-6 text-center text-sm text-ink-muted">Loading…</p>
               ) : data?.items.length ? (
                 data.items.map((n) => (
-                  <button
+                  <div
                     key={n.id}
-                    type="button"
-                    onClick={() => openNotification(n)}
-                    className={`block w-full border-b border-edge px-4 py-2.5 text-left text-sm hover:bg-surface-muted ${n.isRead ? '' : 'bg-brand-600/10'}`}
+                    className={`block w-full border-b border-edge px-4 py-2.5 text-left text-sm ${n.isRead ? '' : 'bg-brand-600/10'}`}
                   >
                     <p className="font-medium text-ink">{n.title}</p>
                     <p className="mt-0.5 text-xs text-ink-muted line-clamp-2">{n.message}</p>
-                    <p className="mt-1 text-[10px] text-ink-muted">{new Date(n.createdAt).toLocaleString()}</p>
-                  </button>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <p className="text-[10px] text-ink-muted">{new Date(n.createdAt).toLocaleString()}</p>
+                      {!n.isRead && (
+                        <button type="button" onClick={() => markRead(n.id)} className="text-[10px] text-brand-ink hover:underline">
+                          Mark read
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 ))
               ) : (
                 <p className="px-4 py-6 text-center text-sm text-ink-muted">No notifications yet</p>

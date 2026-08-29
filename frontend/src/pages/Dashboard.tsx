@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
-import { PageHeader, StatCard, Spinner, Badge, EmptyState } from '@/components/ui';
+import { PageHeader, StatCard, Spinner, Badge } from '@/components/ui';
 import DashboardCharts from '@/components/DashboardCharts';
 import { GlobalUserSearch } from '@/pages/search/UserSearchPage';
 
@@ -13,11 +13,6 @@ export default function Dashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard', 'me'],
     queryFn: async () => (await api.get('/dashboard/me')).data,
-  });
-  const { data: actionCenter } = useQuery({
-    queryKey: ['dashboard', 'action-center'],
-    queryFn: async () => (await api.get('/dashboard/action-center')).data,
-    enabled: !!user && user.role === 'FACULTY',
   });
 
   if (isLoading) return <Spinner />;
@@ -39,62 +34,7 @@ export default function Dashboard() {
       {user?.role === 'STUDENT' && <StudentDashboard data={data} />}
       {user?.role === 'PARENT' && <ParentDashboard data={data} />}
 
-      {actionCenter && user?.role === 'FACULTY' && <ActionCenterPanel actionCenter={actionCenter} />}
-
       <DashboardCharts />
-    </div>
-  );
-}
-
-function actionItemHref(item: Record<string, unknown>): string | null {
-  if (item.sessionId) return `/sessions/${item.sessionId}`;
-  if (item.taskId) return `/tasks/${item.taskId}`;
-  if (item.examId) return `/exams/${item.examId}`;
-  if (item.caseId) return '/performance';
-  if (item.transferId) return '/';
-  if (item.type === 'SELF_ASSESSMENT') return '/performance';
-  if (item.type === 'EXAM') return '/exams';
-  return null;
-}
-
-function ActionCenterPanel({ actionCenter }: { actionCenter: Record<string, unknown> }) {
-  const items: Array<{ key: string; item: Record<string, unknown> }> = [];
-  if (actionCenter.selfAssessmentReminder) {
-    items.push({ key: 'self-assessment', item: { type: 'SELF_ASSESSMENT', label: 'Complete your monthly self-assessment' } });
-  }
-  for (const [group, groupItems] of Object.entries(actionCenter)) {
-    if (group === 'selfAssessmentReminder' || !Array.isArray(groupItems)) continue;
-    groupItems.forEach((item, i) => items.push({ key: `${group}-${i}`, item: item as Record<string, unknown> }));
-  }
-
-  return (
-    <div className="mt-6">
-      <h2 className="mb-3 text-sm font-semibold text-ink">Action Center</h2>
-      {items.length === 0 ? (
-        <EmptyState text="You're all caught up - nothing pending right now." />
-      ) : (
-        <div className="card divide-y divide-edge">
-          {items.map(({ key, item }) => {
-            const href = actionItemHref(item);
-            const date = (item.date ?? item.dueDate) as string | undefined;
-            const inner = (
-              <>
-                <span className="text-ink">{String(item.label)}</span>
-                {date && <span className="text-xs text-ink-muted">{new Date(date).toDateString()}</span>}
-              </>
-            );
-            return href ? (
-              <Link key={key} to={href} className="flex items-center justify-between px-4 py-3 text-sm hover:bg-surface-muted max-lg:flex-col max-lg:items-start max-lg:gap-1">
-                {inner}
-              </Link>
-            ) : (
-              <div key={key} className="flex items-center justify-between px-4 py-3 text-sm max-lg:flex-col max-lg:items-start max-lg:gap-1">
-                {inner}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -106,6 +46,14 @@ function dayColorClasses(dayIndex: number, active: boolean) {
   const isRed = dayIndex % 2 === 0;
   if (!active) return 'bg-surface-muted text-ink-muted';
   return isRed ? 'bg-red-600 text-white dark:bg-red-700' : 'bg-blue-900 text-white dark:bg-blue-950';
+}
+
+function formatSessionTime(sessionDate: string) {
+  return new Date(sessionDate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+function sessionLabel(s: any) {
+  return `${formatSessionTime(s.sessionDate)} · ${s.batchName}${s.topic ? ` — ${s.topic}` : ''}`;
 }
 
 function WeekCalendar({ weekSessions, readOnly = false }: { weekSessions: any[]; readOnly?: boolean }) {
@@ -137,11 +85,11 @@ function WeekCalendar({ weekSessions, readOnly = false }: { weekSessions: any[];
                 d.sessions.map((s: any) =>
                   readOnly ? (
                     <div key={s.id} className="block rounded bg-surface-muted px-2 py-1.5 text-xs text-ink">
-                      {s.batchName} — {s.topic}
+                      {sessionLabel(s)}
                     </div>
                   ) : (
                     <Link key={s.id} to={`/sessions/${s.id}`} className="block rounded bg-surface-muted px-2 py-1.5 text-xs text-ink hover:bg-brand-100">
-                      {s.batchName} — {s.topic}
+                      {sessionLabel(s)}
                     </Link>
                   ),
                 )
@@ -162,12 +110,12 @@ function WeekCalendar({ weekSessions, readOnly = false }: { weekSessions: any[];
               ) : (
                 d.sessions.map((s: any) =>
                   readOnly ? (
-                    <div key={s.id} className="block truncate rounded bg-surface-muted px-1.5 py-1 text-[11px] text-ink" title={`${s.topic} - ${s.batchName}`}>
-                      {s.batchName}
+                    <div key={s.id} className="block truncate rounded bg-surface-muted px-1.5 py-1 text-[11px] text-ink" title={sessionLabel(s)}>
+                      {sessionLabel(s)}
                     </div>
                   ) : (
-                    <Link key={s.id} to={`/sessions/${s.id}`} className="block truncate rounded bg-surface-muted px-1.5 py-1 text-[11px] text-ink hover:bg-brand-100" title={`${s.topic} - ${s.batchName}`}>
-                      {s.batchName}
+                    <Link key={s.id} to={`/sessions/${s.id}`} className="block truncate rounded bg-surface-muted px-1.5 py-1 text-[11px] text-ink hover:bg-brand-100" title={sessionLabel(s)}>
+                      {sessionLabel(s)}
                     </Link>
                   ),
                 )
@@ -191,33 +139,6 @@ function ManagementDashboard({ data }: { data: any }) {
 
       <div className="mt-6">
         <WeekCalendar weekSessions={data?.weekSessions ?? []} />
-      </div>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="card border-l-4 border-l-blue-900 p-4">
-          <h3 className="mb-2 text-sm font-semibold text-ink">Navy Blue Days - Batches</h3>
-          {(data?.navyBatches ?? []).length === 0 ? (
-            <p className="text-xs text-ink-muted">No sessions this week</p>
-          ) : (
-            <div className="space-y-1">
-              {data.navyBatches.map((b: any) => (
-                <Link key={b.id} to={`/batches/${b.id}`} className="block text-sm text-brand-ink hover:underline">{b.name}</Link>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="card border-l-4 border-l-red-600 p-4">
-          <h3 className="mb-2 text-sm font-semibold text-ink">Red Days - Batches</h3>
-          {(data?.redBatches ?? []).length === 0 ? (
-            <p className="text-xs text-ink-muted">No sessions this week</p>
-          ) : (
-            <div className="space-y-1">
-              {data.redBatches.map((b: any) => (
-                <Link key={b.id} to={`/batches/${b.id}`} className="block text-sm text-brand-ink hover:underline">{b.name}</Link>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       <h2 className="mb-3 mt-6 text-sm font-semibold text-ink">Batch Performance</h2>
@@ -322,7 +243,9 @@ function FacultyDashboard({ data }: { data: any }) {
 }
 
 function StudentDashboard({ data }: { data: any }) {
+  const { user } = useAuth();
   const composite = data?.composite;
+  const studentId = user?.profile?.id;
   return (
     <div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -331,6 +254,11 @@ function StudentDashboard({ data }: { data: any }) {
         <StatCard label="Upcoming Session(s)" value={data?.upcomingSessions?.length ?? 0} />
         <StatCard label="Overdue Tasks" value={data?.overdueTasks?.length ?? 0} tone={data?.overdueTasks?.length > 0 ? 'bad' : 'good'} />
       </div>
+      {studentId && (
+        <div className="mt-4">
+          <Link to={`/my/${studentId}`} className="text-sm font-medium text-brand-ink hover:underline">View my student details →</Link>
+        </div>
+      )}
       {composite && (
         <div className="card mt-6 grid grid-cols-2 gap-4 p-4 sm:grid-cols-4">
           <Metric label="Exams" value={composite.examPct} />

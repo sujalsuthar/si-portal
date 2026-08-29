@@ -124,7 +124,9 @@ export default function App() {
             <Route path="/reports" element={<ReportsPage />} />
           </Route>
           <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
+          <Route element={<ProtectedRoute roles={NOT_PARENT} />}>
+            <Route path="/calendar" element={<CalendarPage />} />
+          </Route>
           <Route element={<ProtectedRoute roles={['SUPER_ADMIN']} />}>
             <Route path="/account-management" element={<AccountManagementPage />} />
           </Route>

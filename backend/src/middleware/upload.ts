@@ -56,6 +56,24 @@ export const uploadAttachment = multer({ storage: storageFor('attachments'), fil
 export const uploadFeedAttachment = multer({ storage: storageFor('attachments'), fileFilter: feedFileFilter, limits: feedAttachmentLimits });
 export const uploadEvidence = multer({ storage: storageFor('evidence'), fileFilter, limits });
 
+const EXCEL_MIME = new Set([
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
+function excelFileFilter(_req: unknown, file: Express.Multer.File, cb: multer.FileFilterCallback) {
+  if (!EXCEL_MIME.has(file.mimetype)) {
+    return cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
+  }
+  cb(null, true);
+}
+
+export const uploadExcel = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: excelFileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
 export function publicUploadUrl(subdir: string, filename: string): string {
   return `/uploads/${subdir}/${filename}`;
 }

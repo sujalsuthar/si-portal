@@ -34,13 +34,20 @@ presentationsRouter.get(
 
     const where: Record<string, unknown> = {
       ...(studentId ? { studentId } : {}),
-      ...(batchId ? { batchId } : {}),
       ...(status ? { status } : {}),
     };
     if (req.auth!.role === RoleName.STUDENT && !studentId) where.studentId = req.auth!.studentId;
     if (req.auth!.role === RoleName.PARENT && !studentId) where.studentId = { in: await getParentStudentIds(req.auth!.parentId!) };
-    if (req.auth!.role === RoleName.FACULTY && !studentId && !batchId) {
-      where.batchId = { in: await getFacultyBatchIds(req.auth!.facultyId!) };
+
+    // Match by presentation.batchId OR student's current batch (older rows may have null batchId).
+    if (batchId) {
+      where.OR = [{ batchId }, { student: { currentBatchId: batchId } }];
+    } else if (req.auth!.role === RoleName.FACULTY && !studentId) {
+      const facultyBatchIds = await getFacultyBatchIds(req.auth!.facultyId!);
+      where.OR = [
+        { batchId: { in: facultyBatchIds } },
+        { student: { currentBatchId: { in: facultyBatchIds } } },
+      ];
     }
 
     const [items, total] = await Promise.all([
@@ -57,7 +64,27 @@ presentationsRouter.get(
       }),
       prisma.presentation.count({ where }),
     ]);
-    res.json(paginatedResult(items, total, pagination));
+
+    // Backfill older rows that were saved without batchId so filters and faculty scope work.
+    const needsBackfill = items.filter((p) => !p.batchId && p.student.currentBatch?.id);
+    if (needsBackfill.length > 0) {
+      await Promise.all(
+        needsBackfill.map((p) =>
+          prisma.presentation.update({
+            where: { id: p.id },
+            data: { batchId: p.student.currentBatch!.id },
+          }),
+        ),
+      );
+    }
+
+    // Always expose a concrete batch (stored on the presentation, else student's current batch).
+    const normalized = items.map((p) => ({
+      ...p,
+      batchId: p.batchId ?? p.student.currentBatch?.id ?? null,
+      batch: p.batch ?? p.student.currentBatch ?? null,
+    }));
+    res.json(paginatedResult(normalized, total, pagination));
   }),
 );
 
@@ -66,19 +93,36 @@ presentationsRouter.post(
   authorize(...ROLE_GROUPS.STAFF),
   asyncHandler(async (req, res) => {
     const data = scheduleSchema.parse(req.body);
-    const student = await prisma.student.findUnique({ where: { id: data.studentId }, select: { currentBatchId: true, userId: true } });
+    const student = await prisma.student.findUnique({
+      where: { id: data.studentId },
+      select: { currentBatchId: true, userId: true, currentBatch: { select: { id: true, name: true } } },
+    });
+    if (!student) throw ApiError.notFound('Student not found');
+
+    const batchId = data.batchId ?? student.currentBatchId;
+    if (!batchId) throw ApiError.badRequest('Student is not assigned to a batch');
+
     const presentation = await prisma.presentation.create({
-      data: { ...data, batchId: data.batchId ?? student?.currentBatchId ?? undefined },
+      data: {
+        studentId: data.studentId,
+        topic: data.topic,
+        scheduledDate: data.scheduledDate,
+        durationMinutes: data.durationMinutes,
+        evaluatorFacultyId: data.evaluatorFacultyId,
+        batchId,
+      },
+      include: {
+        student: { select: { id: true, firstName: true, lastName: true, studentCode: true, currentBatch: { select: { id: true, name: true } } } },
+        batch: { select: { id: true, name: true } },
+      },
     });
 
-    if (student) {
-      await notify({
-        userId: student.userId,
-        category: NotificationCategory.PRESENTATION,
-        title: 'Presentation scheduled',
-        message: `"${data.topic}" scheduled on ${data.scheduledDate.toDateString()}.`,
-      });
-    }
+    await notify({
+      userId: student.userId,
+      category: NotificationCategory.PRESENTATION,
+      title: 'Presentation scheduled',
+      message: `"${data.topic}" scheduled on ${data.scheduledDate.toDateString()}.`,
+    });
     res.status(201).json(presentation);
   }),
 );

@@ -113,7 +113,15 @@ function StaffBehaviourView() {
         keyFn={(r: any) => r.id}
         columns={[
           { header: 'Date', cell: (r: any) => new Date(r.eventDate).toLocaleDateString() },
-          { header: 'Student', cell: (r: any) => `${r.student.firstName} ${r.student.lastName}` },
+          {
+            header: 'Student',
+            cell: (r: any) => {
+              const name = `${r.student.firstName} ${r.student.lastName}`;
+              const batch = r.student.currentBatch?.name;
+              return batch ? `${name} · ${batch}` : name;
+            },
+          },
+          { header: 'Batch', cell: (r: any) => r.student.currentBatch?.name ?? '-' },
           { header: 'Category', cell: (r: any) => r.category },
           { header: 'Points', cell: (r: any) => <Badge tone={r.points >= 0 ? 'green' : 'red'}>{r.points >= 0 ? '+' : ''}{r.points}</Badge> },
           { header: 'Reason', cell: (r: any) => r.reason },
@@ -160,6 +168,7 @@ function StaffBehaviourView() {
             studentId={form.studentId}
             selectedLabel={studentLabel}
             enabled={recordOpen}
+            studentType={studentType}
             onSelect={(id, label) => { setForm((f) => ({ ...f, studentId: id })); setStudentLabel(label); }}
             onClear={() => { setForm((f) => ({ ...f, studentId: '' })); setStudentLabel(''); }}
           />

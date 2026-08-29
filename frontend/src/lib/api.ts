@@ -80,7 +80,26 @@ api.interceptors.response.use(
 
 export function apiErrorMessage(err: unknown, fallback = 'Something went wrong'): string {
   if (axios.isAxiosError(err)) {
-    return (err.response?.data as { error?: { message?: string } })?.error?.message ?? fallback;
+    const payload = err.response?.data as {
+      error?: {
+        message?: string;
+        details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] } | Array<{ path?: (string | number)[]; message?: string }>;
+      };
+    } | undefined;
+    const message = payload?.error?.message;
+    const details = payload?.error?.details;
+    if (details && !Array.isArray(details) && details.fieldErrors) {
+      const firstField = Object.entries(details.fieldErrors).find(([, msgs]) => msgs?.length);
+      if (firstField) return `${message ?? 'Validation failed'}: ${firstField[0]} — ${firstField[1][0]}`;
+      if (details.formErrors?.length) return `${message ?? 'Validation failed'}: ${details.formErrors[0]}`;
+    }
+    if (Array.isArray(details) && details.length > 0) {
+      const first = details[0];
+      const path = Array.isArray(first.path) ? first.path.join('.') : '';
+      const detailMsg = first.message ?? '';
+      if (path || detailMsg) return `${message ?? 'Validation failed'}: ${path ? `${path} — ` : ''}${detailMsg}`.trim();
+    }
+    return message ?? fallback;
   }
   return fallback;
 }

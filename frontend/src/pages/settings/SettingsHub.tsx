@@ -15,27 +15,31 @@ export default function SettingsHub() {
   const canEditScoring = user && ['SUPER_ADMIN', 'MANAGEMENT'].includes(user.role);
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
-  // Every role reaches Profile & Password - it is never conditional.
-  const tabs = [
-    'Profile & Password',
+  const adminTabs = [
     ...(canEditScoring ? ['Default Parameters'] : []),
     ...(canManageUsers ? ['Users'] : []),
     ...(canViewAudit ? ['Audit Log'] : []),
     ...(isSuperAdmin ? ['Duplicate Monitoring'] : []),
     ...(canEditScoring ? ['Organisation'] : []),
   ];
-  const [tab, setTab] = useState(tabs[0]);
+  const [tab, setTab] = useState(adminTabs[0] ?? '');
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Profile, system configuration, scoring policy and audit trail." />
-      <TabBar tabs={tabs} active={tab} onChange={setTab} />
-      {tab === 'Profile & Password' && <ProfilePasswordTab />}
-      {tab === 'Default Parameters' && canEditScoring && <ScoringSettingsTab />}
-      {tab === 'Users' && canManageUsers && <UsersTab />}
-      {tab === 'Audit Log' && canViewAudit && <AuditLogTab />}
-      {tab === 'Duplicate Monitoring' && isSuperAdmin && <DuplicatesTab />}
-      {tab === 'Organisation' && canEditScoring && <OrganisationTab />}
+      <PageHeader title="Settings" />
+      <ProfilePasswordTab />
+      {adminTabs.length > 0 && (
+        <>
+          <div className="mt-8">
+            <TabBar tabs={adminTabs} active={tab} onChange={setTab} />
+          </div>
+          {tab === 'Default Parameters' && canEditScoring && <ScoringSettingsTab />}
+          {tab === 'Users' && canManageUsers && <UsersTab />}
+          {tab === 'Audit Log' && canViewAudit && <AuditLogTab />}
+          {tab === 'Duplicate Monitoring' && isSuperAdmin && <DuplicatesTab />}
+          {tab === 'Organisation' && canEditScoring && <OrganisationTab />}
+        </>
+      )}
     </div>
   );
 }

@@ -40,7 +40,7 @@ const questionObjectSchema = z.object({
   questionType: z.nativeEnum(QuestionType),
   options: z.array(z.string()).optional(),
   correctAnswer: z.string().optional(),
-  marks: z.number().int().positive().optional(),
+  marks: z.union([z.literal(1), z.literal(10)]).optional(),
   rubric: rubricSchema.optional(),
   tags: z.array(z.string()).default([]),
 });

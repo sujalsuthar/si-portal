@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { RoleName } from '@prisma/client';
+import { RoleName, StudentStatus } from '@prisma/client';
 import { z } from 'zod';
 import { asyncHandler } from '@/utils/asyncHandler';
 import { authenticate, authorize, ROLE_GROUPS } from '@/middleware/auth';
@@ -87,6 +87,9 @@ usersRouter.patch(
   authorize(...ROLE_GROUPS.ADMIN_LIKE),
   asyncHandler(async (req, res) => {
     const user = await prisma.user.update({ where: { id: req.params.id }, data: { isActive: true } });
+    if (user.role === RoleName.STUDENT) {
+      await prisma.student.updateMany({ where: { userId: user.id }, data: { status: StudentStatus.ACTIVE, archivedAt: null } });
+    }
     await recordAudit({ entityType: 'User', entityId: user.id, action: 'ACTIVATE', actorId: req.auth!.userId });
     res.json(user);
   }),
@@ -98,6 +101,9 @@ usersRouter.patch(
   asyncHandler(async (req, res) => {
     if (req.params.id === req.auth!.userId) throw ApiError.badRequest('You cannot deactivate your own account');
     const user = await prisma.user.update({ where: { id: req.params.id }, data: { isActive: false } });
+    if (user.role === RoleName.STUDENT) {
+      await prisma.student.updateMany({ where: { userId: user.id }, data: { status: StudentStatus.INACTIVE } });
+    }
     await recordAudit({ entityType: 'User', entityId: user.id, action: 'DEACTIVATE', actorId: req.auth!.userId });
     res.json(user);
   }),

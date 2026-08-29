@@ -31,8 +31,8 @@ const PAPER_LIBRARY_TITLE = '__PAPER_LIBRARY__';
 async function getOrCreatePaperLibraryExam(createdById: string) {
   let exam = await prisma.exam.findFirst({ where: { title: PAPER_LIBRARY_TITLE } });
   if (!exam) {
-    const batch = await prisma.batch.findFirst({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } });
-    if (!batch) throw ApiError.badRequest('No active batch exists to initialize the paper library');
+    const batch = await prisma.batch.findFirst({ orderBy: { createdAt: 'asc' } });
+    if (!batch) throw ApiError.badRequest('Create at least one batch before saving papers to the library');
     exam = await prisma.exam.create({
       data: { title: PAPER_LIBRARY_TITLE, batchId: batch.id, subject: 'Paper Library', createdById, status: ExamStatus.DRAFT },
     });
@@ -71,7 +71,8 @@ examsRouter.get(
       const students = await prisma.student.findMany({ where: { id: { in: studentIds } }, select: { currentBatchId: true } });
       where.batchId = { in: students.map((s) => s.currentBatchId).filter(Boolean) };
     } else if (!batchId && req.auth!.role === RoleName.FACULTY) {
-      where.batchId = { in: await getFacultyBatchIds(req.auth!.facultyId!) };
+      const facultyBatchIds = await getFacultyBatchIds(req.auth!.facultyId!);
+      where.batchId = facultyBatchIds.length > 0 ? { in: facultyBatchIds } : '__none__';
     }
 
     const [items, total] = await Promise.all([

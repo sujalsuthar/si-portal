@@ -104,12 +104,26 @@ tasksRouter.post(
   asyncHandler(async (req, res) => {
     const data = createTaskSchema.parse(req.body);
 
-    let studentIds = data.studentIds ?? [];
-    if (studentIds.length === 0 && data.batchId) {
-      const students = await prisma.student.findMany({ where: { currentBatchId: data.batchId, status: 'ACTIVE' }, select: { id: true } });
+    // Faculty / team always assign to the full active batch — never interns-only or cherry-picked students.
+    let studentIds: string[] = [];
+    if (req.auth!.role === RoleName.FACULTY) {
+      if (!data.batchId) throw ApiError.badRequest('Select a batch to assign the task');
+      const students = await prisma.student.findMany({
+        where: { currentBatchId: data.batchId, status: 'ACTIVE' },
+        select: { id: true },
+      });
       studentIds = students.map((s) => s.id);
+    } else {
+      studentIds = data.studentIds ?? [];
+      if (studentIds.length === 0 && data.batchId) {
+        const students = await prisma.student.findMany({
+          where: { currentBatchId: data.batchId, status: 'ACTIVE' },
+          select: { id: true },
+        });
+        studentIds = students.map((s) => s.id);
+      }
     }
-    if (studentIds.length === 0) throw ApiError.badRequest('Provide studentIds or a batchId with active students');
+    if (studentIds.length === 0) throw ApiError.badRequest('Selected batch has no active students');
 
     const task = await prisma.task.create({
       data: {
