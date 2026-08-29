@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { PageHeader, Table, Badge, Modal, StatCard } from '@/components/ui';
+import { StudentSearchPicker } from '@/components/StudentSearchPicker';
 
 const STATUS_TONE: Record<string, 'green' | 'red' | 'slate'> = { ACTIVE: 'green', DEMOTED: 'red', COMPLETED: 'slate' };
 
@@ -18,15 +19,10 @@ export default function InternsList() {
   if (!isStaff && user?.role === 'STUDENT') return <StudentDevelopmentView studentId={user.profile?.id} />;
 
   const [promoteOpen, setPromoteOpen] = useState(false);
-  const [studentSearch, setStudentSearch] = useState('');
+  const [studentLabel, setStudentLabel] = useState('');
   const [form, setForm] = useState({ studentId: '', mentorId: '' });
 
   const { data: interns, isLoading } = useQuery({ queryKey: ['interns'], queryFn: async () => (await api.get('/interns')).data });
-  const { data: studentResults } = useQuery({
-    queryKey: ['students', 'search', studentSearch],
-    queryFn: async () => (await api.get('/students', { params: { search: studentSearch, pageSize: 10 } })).data,
-    enabled: promoteOpen && studentSearch.length > 1,
-  });
   const { data: facultyList } = useQuery({ queryKey: ['faculty', 'all'], queryFn: async () => (await api.get('/faculty', { params: { pageSize: 100 } })).data, enabled: promoteOpen });
 
   async function downloadReport() {
@@ -47,9 +43,10 @@ export default function InternsList() {
     if (!form.studentId || !form.mentorId) return toast.error('Select a student and a mentor');
     try {
       await api.post('/interns/promote', form);
-      toast.success('Student promoted to Intern');
+      toast.success('Student added to Intern programme');
       setPromoteOpen(false);
       setForm({ studentId: '', mentorId: '' });
+      setStudentLabel('');
       queryClient.invalidateQueries({ queryKey: ['interns'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -64,7 +61,7 @@ export default function InternsList() {
         actions={
           <>
             {isStaff && <button className="btn-secondary" onClick={downloadReport}>Download Intern Report</button>}
-            {canPromote && <button className="btn-primary" onClick={() => setPromoteOpen(true)}>+ Promote to Intern</button>}
+            {canPromote && <button className="btn-primary" onClick={() => setPromoteOpen(true)}>+ Add to Intern</button>}
           </>
         }
       />
@@ -80,21 +77,15 @@ export default function InternsList() {
           { header: 'Work Status', cell: (r: any) => (r.internFrozen ? <Badge tone="red">Paused - Review Pending</Badge> : <Badge tone="green">Active</Badge>) },
         ]}
       />
-      <Modal open={promoteOpen} onClose={() => setPromoteOpen(false)} title="Promote to Intern">
+      <Modal open={promoteOpen} onClose={() => setPromoteOpen(false)} title="Add to Intern">
         <div className="space-y-3">
-          <label className="block">
-            <span className="label">Student</span>
-            <input className="input" placeholder="Search student…" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
-            {studentResults?.items?.length > 0 && (
-              <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-edge">
-                {studentResults.items.map((s: any) => (
-                  <button key={s.id} type="button" className="block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-muted" onClick={() => { setForm((f) => ({ ...f, studentId: s.id })); setStudentSearch(`${s.firstName} ${s.lastName}`); }}>
-                    {s.firstName} {s.lastName}
-                  </button>
-                ))}
-              </div>
-            )}
-          </label>
+          <StudentSearchPicker
+            studentId={form.studentId}
+            selectedLabel={studentLabel}
+            enabled={promoteOpen}
+            onSelect={(id, label) => { setForm((f) => ({ ...f, studentId: id })); setStudentLabel(label); }}
+            onClear={() => { setForm((f) => ({ ...f, studentId: '' })); setStudentLabel(''); }}
+          />
           <label className="block">
             <span className="label">Mentor</span>
             <select className="input" value={form.mentorId} onChange={(e) => setForm((f) => ({ ...f, mentorId: e.target.value }))}>

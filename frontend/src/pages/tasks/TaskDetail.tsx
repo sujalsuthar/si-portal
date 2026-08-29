@@ -43,11 +43,25 @@ export default function TaskDetail() {
 
   async function evaluate(submissionId: string) {
     const draft = evaluating[submissionId];
-    if (!draft?.points) return toast.error('Enter points to award');
+    if (draft?.points === undefined || draft?.points === '') return toast.error('Enter points to award');
     try {
-      await api.patch(`/tasks/submissions/${submissionId}/evaluate`, { pointsAwarded: Number(draft.points), feedback: draft.feedback });
+      const res = await api.patch(`/tasks/submissions/${submissionId}/evaluate`, { pointsAwarded: Number(draft.points), feedback: draft.feedback });
+      queryClient.setQueryData(['task', id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          submissions: old.submissions.map((s: any) => (s.id === submissionId ? { ...s, ...res.data, status: 'EVALUATED' } : s)),
+        };
+      });
+      await queryClient.invalidateQueries({ queryKey: ['task', id] });
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Evaluated');
-      queryClient.invalidateQueries({ queryKey: ['task', id] });
+      setEvaluating((prev) => {
+        const next = { ...prev };
+        delete next[submissionId];
+        return next;
+      });
+      setEditingIds((prev) => ({ ...prev, [submissionId]: false }));
     } catch (err) {
       toast.error(apiErrorMessage(err));
     }
@@ -112,10 +126,7 @@ export default function TaskDetail() {
                         />
                         <button
                           className="btn-secondary"
-                          onClick={() => {
-                            evaluate(r.id);
-                            setEditingIds((prev) => ({ ...prev, [r.id]: false }));
-                          }}
+                          onClick={() => evaluate(r.id)}
                         >
                           Save
                         </button>

@@ -239,7 +239,7 @@ function UserHubPanel({ kind, id }: { kind: string; id: string }) {
     if (!mentorId) return toast.error('Select a mentor');
     try {
       await api.post('/interns/promote', { studentId: profile.id, mentorId });
-      toast.success('Promoted to intern');
+      toast.success('Added to intern programme');
       setPromoteOpen(false);
       queryClient.invalidateQueries({ queryKey: ['search-profile', kind, id] });
     } catch (err) {
@@ -351,7 +351,7 @@ function UserHubPanel({ kind, id }: { kind: string; id: string }) {
             <>
               <Link to={`/people/students/${id}`} className="btn-secondary">Full student profile</Link>
               {profile.actions?.viewIntern && <Link to={`/interns/${id}`} className="btn-secondary">Intern dashboard</Link>}
-              {profile.actions?.promoteIntern && <button type="button" className="btn-primary" onClick={() => setPromoteOpen(true)}>Promote to intern</button>}
+              {profile.actions?.promoteIntern && <button type="button" className="btn-primary" onClick={() => setPromoteOpen(true)}>Add to Intern</button>}
               {profile.actions?.demoteIntern && <button type="button" className="btn-danger" onClick={() => setDemoteOpen(true)}>Demote intern</button>}
               {profile.actions?.unfreezeIntern && <button type="button" className="btn-secondary" onClick={unfreezeIntern}>Unfreeze work</button>}
               <Link to="/fees" className="btn-secondary">Fees</Link>
@@ -369,7 +369,7 @@ function UserHubPanel({ kind, id }: { kind: string; id: string }) {
         </div>
       </div>
 
-      <Modal open={promoteOpen} onClose={() => setPromoteOpen(false)} title="Promote to Intern">
+      <Modal open={promoteOpen} onClose={() => setPromoteOpen(false)} title="Add to Intern">
         <div className="space-y-3">
           <label className="block">
             <span className="label">Task mentor</span>
@@ -378,7 +378,7 @@ function UserHubPanel({ kind, id }: { kind: string; id: string }) {
               {facultyList?.items?.map((f: any) => <option key={f.id} value={f.id}>{f.firstName} {f.lastName}</option>)}
             </select>
           </label>
-          <div className="flex justify-end"><button type="button" className="btn-primary" onClick={promoteIntern}>Promote</button></div>
+          <div className="flex justify-end"><button type="button" className="btn-primary" onClick={promoteIntern}>Add to Intern</button></div>
         </div>
       </Modal>
 

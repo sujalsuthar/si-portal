@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { Table, Badge, Modal } from '@/components/ui';
+import { StudentSearchPicker } from '@/components/StudentSearchPicker';
 
 const RUBRIC_FIELDS = [
   ['contentScore', 'Content'],
@@ -22,7 +23,7 @@ export default function PresentationsTab() {
   const [scoreTarget, setScoreTarget] = useState<any>(null);
   const [scores, setScores] = useState<Record<string, string>>({});
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [studentSearch, setStudentSearch] = useState('');
+  const [studentLabel, setStudentLabel] = useState('');
   const [form, setForm] = useState({ studentId: '', topic: '', scheduledDate: '' });
 
   const { data: batches } = useQuery({
@@ -35,19 +36,16 @@ export default function PresentationsTab() {
     queryFn: async () => (await api.get('/presentations', { params: { pageSize: 50, ...(batchFilter ? { batchId: batchFilter } : {}) } })).data,
   });
   const batchItems = (batches as { items?: any[] } | undefined)?.items ?? [];
-  const { data: studentResults } = useQuery({
-    queryKey: ['students', 'search', studentSearch],
-    queryFn: async () => (await api.get('/students', { params: { search: studentSearch, pageSize: 10 } })).data,
-    enabled: scheduleOpen && studentSearch.length > 1,
-  });
 
   async function schedule() {
-    if (!form.studentId || !form.topic || !form.scheduledDate) return toast.error('Fill in all fields');
+    if (!form.studentId) return toast.error('Select a student from the search results');
+    if (!form.topic.trim() || !form.scheduledDate) return toast.error('Fill in topic and date');
     try {
       await api.post('/presentations', form);
       toast.success('Presentation scheduled');
       setScheduleOpen(false);
       setForm({ studentId: '', topic: '', scheduledDate: '' });
+      setStudentLabel('');
       queryClient.invalidateQueries({ queryKey: ['presentations'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -106,24 +104,13 @@ export default function PresentationsTab() {
 
       <Modal open={scheduleOpen} onClose={() => setScheduleOpen(false)} title="Schedule Presentation">
         <div className="space-y-3">
-          <label className="block">
-            <span className="label">Student</span>
-            <input className="input" placeholder="Search student…" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
-            {studentResults?.items?.length > 0 && (
-              <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-edge">
-                {studentResults.items.map((s: any) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className="block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-muted"
-                    onClick={() => { setForm((f) => ({ ...f, studentId: s.id })); setStudentSearch(`${s.firstName} ${s.lastName}`); }}
-                  >
-                    {s.firstName} {s.lastName}
-                  </button>
-                ))}
-              </div>
-            )}
-          </label>
+          <StudentSearchPicker
+            studentId={form.studentId}
+            selectedLabel={studentLabel}
+            enabled={scheduleOpen}
+            onSelect={(id, label) => { setForm((f) => ({ ...f, studentId: id })); setStudentLabel(label); }}
+            onClear={() => { setForm((f) => ({ ...f, studentId: '' })); setStudentLabel(''); }}
+          />
           <label className="block"><span className="label">Topic</span><input className="input" value={form.topic} onChange={(e) => setForm((f) => ({ ...f, topic: e.target.value }))} /></label>
           <label className="block"><span className="label">Date</span><input className="input" type="date" value={form.scheduledDate} onChange={(e) => setForm((f) => ({ ...f, scheduledDate: e.target.value }))} /></label>
           <div className="flex justify-end"><button className="btn-primary" onClick={schedule}>Schedule</button></div>

@@ -156,7 +156,7 @@ export default function UsersTab() {
   return (
     <div>
       <div className="filter-row mb-3">
-        <input className="input w-64 max-lg:w-full" placeholder="Search by email…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input className="input w-64 max-lg:w-full" placeholder="Search by name or email…" value={search} onChange={(e) => setSearch(e.target.value)} />
         {isSuperAdmin && (
           <button className="btn-secondary" onClick={openAddUser}>+ Add User</button>
         )}

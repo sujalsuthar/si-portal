@@ -66,9 +66,11 @@ presentationsRouter.post(
   authorize(...ROLE_GROUPS.STAFF),
   asyncHandler(async (req, res) => {
     const data = scheduleSchema.parse(req.body);
-    const presentation = await prisma.presentation.create({ data });
+    const student = await prisma.student.findUnique({ where: { id: data.studentId }, select: { currentBatchId: true, userId: true } });
+    const presentation = await prisma.presentation.create({
+      data: { ...data, batchId: data.batchId ?? student?.currentBatchId ?? undefined },
+    });
 
-    const student = await prisma.student.findUnique({ where: { id: data.studentId } });
     if (student) {
       await notify({
         userId: student.userId,

@@ -146,14 +146,21 @@ parentsRouter.get(
             where: { studentId: link.student.id, status: 'PUBLISHED' },
             orderBy: { publishedAt: 'desc' },
             take: 12,
-            include: { exam: { select: { title: true, examDate: true } } },
+            include: { exam: { select: { title: true, examDate: true, batch: { select: { id: true, name: true } } } } },
           }),
         ]);
         return {
           studentId: link.student.id,
           studentName: `${link.student.firstName} ${link.student.lastName}`,
           composite,
-          examHistory: grades.map((g) => ({ examTitle: g.exam.title, examDate: g.exam.examDate, marksObtained: g.marksObtained, percentage: g.percentage })),
+          examHistory: grades.map((g) => ({
+            examTitle: g.exam.title,
+            examDate: g.exam.examDate,
+            batchId: g.exam.batch.id,
+            batchName: g.exam.batch.name,
+            marksObtained: g.marksObtained,
+            percentage: g.percentage,
+          })),
         };
       }),
     );

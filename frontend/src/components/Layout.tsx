@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { to: '/reports', label: 'Reports', roles: REPORTS_ROLES },
   { to: '/notifications', label: 'Notifications' },
   { to: '/calendar', label: 'Calendar' },
+  { to: '/account-management', label: 'Account Management', roles: ['SUPER_ADMIN'] },
   { to: '/backup', label: 'Backup', roles: ADMIN_LIKE },
   { to: '/settings', label: 'Settings' },
 ];

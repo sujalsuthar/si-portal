@@ -14,6 +14,8 @@ export default function BatchDetail() {
   const queryClient = useQueryClient();
   const canManage = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN'].includes(user.role);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
+  const [timetableOpen, setTimetableOpen] = useState(false);
+  const [timetableDraft, setTimetableDraft] = useState<any[]>([]);
   const [addMode, setAddMode] = useState<'existing' | 'new'>('existing');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [showRanking, setShowRanking] = useState(false);
@@ -33,6 +35,42 @@ export default function BatchDetail() {
   });
 
   if (!batch) return null;
+
+  async function saveTimetable() {
+    try {
+      await api.put(`/batches/${id}/timetable`, {
+        slots: timetableDraft.map((s) => ({
+          dayOfWeek: Number(s.dayOfWeek),
+          startTime: s.startTime,
+          endTime: s.endTime,
+          subject: s.subject,
+          meetingLink: s.meetingLink || undefined,
+        })),
+      });
+      toast.success('Timetable updated');
+      setTimetableOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['batch', id] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
+  }
+
+  function openTimetableEditor() {
+    setTimetableDraft(
+      batch.timetableSlots.length > 0
+        ? batch.timetableSlots.map((s: any) => ({ ...s }))
+        : [{ dayOfWeek: 1, startTime: '09:00', endTime: '10:00', subject: '', meetingLink: '' }],
+    );
+    setTimetableOpen(true);
+  }
+
+  function addTimetableRow() {
+    setTimetableDraft((rows) => [...rows, { dayOfWeek: 1, startTime: '09:00', endTime: '10:00', subject: '', meetingLink: '' }]);
+  }
+
+  function removeTimetableRow(index: number) {
+    setTimetableDraft((rows) => rows.filter((_, i) => i !== index));
+  }
 
   async function bulkAddStudents() {
     if (selectedStudentIds.length === 0) return toast.error('Select at least one student');
@@ -94,7 +132,7 @@ export default function BatchDetail() {
         <div className="lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-ink">Students ({students?.items?.length ?? 0})</h2>
-            {canManage && <button className="btn-secondary text-xs" onClick={() => setBulkAddOpen(true)}>+ Add Students</button>}
+            {canManage && <button className="btn-secondary text-xs" onClick={() => setBulkAddOpen(true)}>Bulk Add Students</button>}
           </div>
           <Table
             rows={students?.items ?? []}
@@ -130,7 +168,10 @@ export default function BatchDetail() {
           )}
         </div>
         <div>
-          <h2 className="mb-2 text-sm font-semibold text-ink">Timetable</h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-ink">Timetable</h2>
+            {canManage && <button className="text-xs text-brand-ink hover:underline" onClick={openTimetableEditor}>Edit timetable</button>}
+          </div>
           <div className="card divide-y divide-edge">
             {batch.timetableSlots.length === 0 && <p className="px-4 py-4 text-center text-sm text-ink-muted">No timetable slots</p>}
             {batch.timetableSlots.map((s: any) => (
@@ -148,8 +189,8 @@ export default function BatchDetail() {
         </div>
       </div>
 
-      <Modal open={bulkAddOpen} onClose={() => setBulkAddOpen(false)} title="Add Students to Batch" wide>
-        {user?.role === 'SUPER_ADMIN' && (
+      <Modal open={bulkAddOpen} onClose={() => setBulkAddOpen(false)} title="Bulk Add Students to Batch" wide>
+        {canManage && (
           <div className="mb-4 flex gap-1 border-b border-edge">
             {(['existing', 'new'] as const).map((t) => (
               <button
@@ -195,6 +236,31 @@ export default function BatchDetail() {
             onCancel={() => setBulkAddOpen(false)}
           />
         )}
+      </Modal>
+
+      <Modal open={timetableOpen} onClose={() => setTimetableOpen(false)} title="Edit Timetable" wide>
+        <div className="space-y-3">
+          {timetableDraft.map((slot, index) => (
+            <div key={index} className="form-grid items-end">
+              <label className="block">
+                <span className="label">Day</span>
+                <select className="input" value={slot.dayOfWeek} onChange={(e) => setTimetableDraft((rows) => rows.map((r, i) => (i === index ? { ...r, dayOfWeek: Number(e.target.value) } : r)))}>
+                  {DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}
+                </select>
+              </label>
+              <label className="block"><span className="label">Start</span><input className="input" value={slot.startTime} onChange={(e) => setTimetableDraft((rows) => rows.map((r, i) => (i === index ? { ...r, startTime: e.target.value } : r)))} placeholder="09:00" /></label>
+              <label className="block"><span className="label">End</span><input className="input" value={slot.endTime} onChange={(e) => setTimetableDraft((rows) => rows.map((r, i) => (i === index ? { ...r, endTime: e.target.value } : r)))} placeholder="10:00" /></label>
+              <label className="block"><span className="label">Subject</span><input className="input" value={slot.subject} onChange={(e) => setTimetableDraft((rows) => rows.map((r, i) => (i === index ? { ...r, subject: e.target.value } : r)))} /></label>
+              <label className="block"><span className="label">Meeting link (Sun only)</span><input className="input" value={slot.meetingLink ?? ''} onChange={(e) => setTimetableDraft((rows) => rows.map((r, i) => (i === index ? { ...r, meetingLink: e.target.value } : r)))} /></label>
+              <button type="button" className="btn-secondary text-xs" onClick={() => removeTimetableRow(index)}>Remove</button>
+            </div>
+          ))}
+          <button type="button" className="btn-secondary text-xs" onClick={addTimetableRow}>+ Add slot</button>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" onClick={() => setTimetableOpen(false)}>Cancel</button>
+            <button className="btn-primary" onClick={saveTimetable}>Save Timetable</button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

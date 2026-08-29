@@ -92,6 +92,7 @@ function ParentDetailView({ parentId }: { parentId: string }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [batchFilters, setBatchFilters] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery({ queryKey: ['parent', parentId], queryFn: async () => (await api.get(`/parents/${parentId}`)).data });
   if (isLoading || !data) return <Spinner />;
@@ -163,27 +164,45 @@ function ParentDetailView({ parentId }: { parentId: string }) {
           <p className="text-sm text-ink-muted">No linked students</p>
         ) : (
           <div className="space-y-3">
-            {data.childrenPerformance.map((c: any) => (
+            {data.childrenPerformance.map((c: any) => {
+              const batches = [...new Map((c.examHistory ?? []).map((e: any) => [e.batchId, e.batchName])).entries()] as [string, string][];
+              const batchFilter = batchFilters[c.studentId] ?? '';
+              const exams = (c.examHistory ?? []).filter((e: any) => !batchFilter || e.batchId === batchFilter);
+              return (
               <div key={c.studentId} className="card p-3">
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium text-ink">{c.studentName}</p>
                   <Badge>{c.composite.composite.toFixed(1)}% composite</Badge>
                 </div>
-                {c.examHistory.length === 0 ? (
-                  <p className="text-xs text-ink-muted">No published exam marks yet</p>
+                {batches.length > 0 && (
+                  <select
+                    className="input mb-2 h-8 w-full max-w-xs text-xs"
+                    value={batchFilter}
+                    onChange={(e) => setBatchFilters((prev) => ({ ...prev, [c.studentId]: e.target.value }))}
+                  >
+                    <option value="">All batches</option>
+                    {batches.map(([batchId, batchName]) => (
+                      <option key={batchId} value={batchId}>{batchName}</option>
+                    ))}
+                  </select>
+                )}
+                {exams.length === 0 ? (
+                  <p className="text-xs text-ink-muted">No published exam marks for this batch yet</p>
                 ) : (
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-left text-ink-muted">
                         <th className="py-1">Exam</th>
+                        <th className="py-1">Batch</th>
                         <th className="py-1">Date</th>
                         <th className="py-1">Marks</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-edge">
-                      {c.examHistory.map((e: any, i: number) => (
+                      {exams.map((e: any, i: number) => (
                         <tr key={i}>
                           <td className="py-1 text-ink">{e.examTitle}</td>
+                          <td className="py-1 text-ink-muted">{e.batchName}</td>
                           <td className="py-1 text-ink-muted">{new Date(e.examDate).toLocaleDateString()}</td>
                           <td className="py-1 text-ink-muted">{e.marksObtained} ({e.percentage.toFixed(1)}%)</td>
                         </tr>
@@ -192,7 +211,7 @@ function ParentDetailView({ parentId }: { parentId: string }) {
                   </table>
                 )}
               </div>
-            ))}
+            );})}
           </div>
         )}
       </div>

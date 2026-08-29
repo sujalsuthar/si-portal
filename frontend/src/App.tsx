@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { ProtectedRoute } from '@/auth/ProtectedRoute';
 import Login from '@/pages/Login';
@@ -37,6 +37,7 @@ import InternDetail from '@/pages/interns/InternDetail';
 import ActionCentrePage from '@/pages/actionCentre/ActionCentrePage';
 import BackupPage from '@/pages/backup/BackupPage';
 import CalendarPage from '@/pages/calendar/CalendarPage';
+import AccountManagementPage from '@/pages/admin/AccountManagementPage';
 import UserSearchPage from '@/pages/search/UserSearchPage';
 import NotFound from '@/pages/NotFound';
 import {
@@ -124,10 +125,13 @@ export default function App() {
           </Route>
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route element={<ProtectedRoute roles={['SUPER_ADMIN']} />}>
+            <Route path="/account-management" element={<AccountManagementPage />} />
+          </Route>
           <Route path="/settings/*" element={<SettingsHub />} />
 
           <Route element={<ProtectedRoute roles={['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FACULTY']} />}>
-            <Route path="/search" element={<UserSearchPage />} />
+            <Route path="/search" element={<Navigate to="/" replace />} />
             <Route path="/search/:kind/:id" element={<UserSearchPage />} />
           </Route>
 

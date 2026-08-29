@@ -157,3 +157,10 @@ _Add new rows below as requests arrive._
 | 13 | Nav | Remove Search from sidebar (dashboard only) | Done |
 | 14 | Projects | Separate Student Projects and Intern Projects views | Done |
 | 15 | Search / Parents | Admin dashboard search finds parents by linked student name | Done |
+| 16 | Nav | Replace Search page with Account Management (deactivate students/team) | Done |
+| 17 | Certificates | Fix false "Fill in all fields" when student typed but not selected | Done |
+| 18 | Interns | Rename "Promote to Intern" → "Add to Intern" | Done |
+| 19 | Presentations | Auto-set batch on schedule; show batch in table | Done |
+| 20 | Parents | Filter exam marks by batch in parent detail view | Done |
+| 21 | Batches | Bulk add students + editable timetable on batch detail | Done |
+| 22 | Tasks | Submission status updates immediately after evaluation | Done |

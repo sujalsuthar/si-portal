@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { PageHeader, Table, Badge, Modal, ActionMenu, MenuItem } from '@/components/ui';
+import { StudentSearchPicker } from '@/components/StudentSearchPicker';
 
 export default function CertificatesList() {
   const { user } = useAuth();
@@ -12,7 +13,7 @@ export default function CertificatesList() {
   const canRevoke = user && user.role === 'SUPER_ADMIN';
   const [issueOpen, setIssueOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [studentSearch, setStudentSearch] = useState('');
+  const [studentLabel, setStudentLabel] = useState('');
   const [revokeTarget, setRevokeTarget] = useState<any>(null);
   const [revokeReason, setRevokeReason] = useState('');
   const [form, setForm] = useState({ studentId: '', title: '', completionDate: '' });
@@ -20,11 +21,6 @@ export default function CertificatesList() {
   const [bulkResults, setBulkResults] = useState<any[] | null>(null);
 
   const { data: items, isLoading } = useQuery({ queryKey: ['certificates'], queryFn: async () => (await api.get('/certificates')).data });
-  const { data: studentResults } = useQuery({
-    queryKey: ['students', 'search', studentSearch],
-    queryFn: async () => (await api.get('/students', { params: { search: studentSearch, pageSize: 10 } })).data,
-    enabled: issueOpen && studentSearch.length > 1,
-  });
   const { data: batches } = useQuery({ queryKey: ['batches', 'all'], queryFn: async () => (await api.get('/batches', { params: { pageSize: 100 } })).data, enabled: bulkOpen });
   const { data: eligibility } = useQuery({
     queryKey: ['certificates', 'bulk-eligibility', bulkForm.batchId],
@@ -33,12 +29,15 @@ export default function CertificatesList() {
   });
 
   async function issue() {
-    if (!form.studentId || !form.title || !form.completionDate) return toast.error('Fill in all fields');
+    if (!form.studentId) return toast.error('Select a student from the search results');
+    if (!form.title.trim()) return toast.error('Enter a certificate title');
+    if (!form.completionDate) return toast.error('Select a completion date');
     try {
       await api.post('/certificates', form);
       toast.success('Certificate issued');
       setIssueOpen(false);
       setForm({ studentId: '', title: '', completionDate: '' });
+      setStudentLabel('');
       queryClient.invalidateQueries({ queryKey: ['certificates'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -93,7 +92,7 @@ export default function CertificatesList() {
           canIssue && (
             <>
               <button className="btn-secondary" onClick={() => { setBulkResults(null); setBulkOpen(true); }}>Bulk Issue</button>
-              <button className="btn-primary" onClick={() => setIssueOpen(true)}>+ Issue Certificate</button>
+              <button className="btn-primary" onClick={() => { setForm({ studentId: '', title: '', completionDate: '' }); setStudentLabel(''); setIssueOpen(true); }}>+ Issue Certificate</button>
             </>
           )
         }
@@ -135,24 +134,13 @@ export default function CertificatesList() {
 
       <Modal open={issueOpen} onClose={() => setIssueOpen(false)} title="Issue Certificate">
         <div className="space-y-3">
-          <label className="block">
-            <span className="label">Student</span>
-            <input className="input" placeholder="Search student…" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
-            {studentResults?.items?.length > 0 && (
-              <div className="mt-1 max-h-32 overflow-y-auto rounded-lg border border-edge">
-                {studentResults.items.map((s: any) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className="block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-muted"
-                    onClick={() => { setForm((f) => ({ ...f, studentId: s.id })); setStudentSearch(`${s.firstName} ${s.lastName}`); }}
-                  >
-                    {s.firstName} {s.lastName}
-                  </button>
-                ))}
-              </div>
-            )}
-          </label>
+          <StudentSearchPicker
+            studentId={form.studentId}
+            selectedLabel={studentLabel}
+            enabled={issueOpen}
+            onSelect={(id, label) => { setForm((f) => ({ ...f, studentId: id })); setStudentLabel(label); }}
+            onClear={() => { setForm((f) => ({ ...f, studentId: '' })); setStudentLabel(''); }}
+          />
           <label className="block"><span className="label">Title</span><input className="input" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Full Stack Web Development - Completion" /></label>
           <label className="block"><span className="label">Completion Date</span><input className="input" type="date" value={form.completionDate} onChange={(e) => setForm((f) => ({ ...f, completionDate: e.target.value }))} /></label>
           <div className="flex justify-end"><button className="btn-primary" onClick={issue}>Issue Certificate</button></div>

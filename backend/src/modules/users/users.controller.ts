@@ -23,7 +23,16 @@ usersRouter.get(
 
     const where = {
       ...(role ? { role } : {}),
-      ...(search ? { email: { contains: search, mode: 'insensitive' as const } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { email: { contains: search, mode: 'insensitive' as const } },
+              { student: { OR: [{ firstName: { contains: search, mode: 'insensitive' as const } }, { lastName: { contains: search, mode: 'insensitive' as const } }] } },
+              { faculty: { OR: [{ firstName: { contains: search, mode: 'insensitive' as const } }, { lastName: { contains: search, mode: 'insensitive' as const } }] } },
+              { parent: { OR: [{ firstName: { contains: search, mode: 'insensitive' as const } }, { lastName: { contains: search, mode: 'insensitive' as const } }] } },
+            ],
+          }
+        : {}),
     };
 
     const [items, total] = await Promise.all([
