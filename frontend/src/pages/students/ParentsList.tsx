@@ -40,7 +40,7 @@ export default function ParentsList() {
         subtitle="Manage parent accounts and their linked students."
         actions={
           <>
-            <input className="input w-full sm:w-56" placeholder="Search by parent or student name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="input w-56 max-lg:w-full" placeholder="Search by parent or student name…" value={search} onChange={(e) => setSearch(e.target.value)} />
             {canManage && <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Add Parent</button>}
           </>
         }

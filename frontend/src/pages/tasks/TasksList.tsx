@@ -65,9 +65,9 @@ export default function TasksList() {
       />
       {!isStudent && !isParent && (
         <div className="mb-3">
-          <label className="inline-flex w-full flex-col gap-2 text-sm sm:w-auto sm:flex-row sm:items-center">
+          <label className="inline-flex flex-row items-center gap-2 text-sm max-lg:w-full max-lg:flex-col max-lg:items-stretch">
             <span className="text-ink-muted">Filter by batch</span>
-            <select className="input w-full sm:w-48" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+            <select className="input w-48 max-lg:w-full" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
               <option value="">All batches</option>
               {activeBatches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>

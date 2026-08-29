@@ -33,7 +33,7 @@ export default function StudentsList() {
         subtitle="Track every student's academic profile. New students are added via Batches → Add Students."
         actions={
           <>
-            <input className="input w-full sm:w-56" placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="input w-56 max-lg:w-full" placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} />
             <select className="input w-44" value={batchId} onChange={(e) => setBatchId(e.target.value)}>
               <option value="">All batches</option>
               {batches?.items?.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}

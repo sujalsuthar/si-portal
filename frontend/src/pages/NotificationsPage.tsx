@@ -73,7 +73,7 @@ export default function NotificationsPage() {
         <div className="card divide-y divide-edge">
           {data.items.map((n: any) => (
             <button key={n.id} onClick={() => openNotification(n)} className={`block w-full px-4 py-3 text-left text-sm hover:bg-surface-muted ${n.isRead ? '' : 'bg-brand-600/10'}`}>
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-between max-lg:flex-col max-lg:items-start max-lg:gap-1">
                 <p className="min-w-0 break-words font-medium text-ink">{n.title}</p>
                 <span className="shrink-0 text-xs text-ink-muted">{new Date(n.createdAt).toLocaleString()}</span>
               </div>

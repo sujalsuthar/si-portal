@@ -156,7 +156,7 @@ export default function UsersTab() {
   return (
     <div>
       <div className="filter-row mb-3">
-        <input className="input w-full sm:w-64" placeholder="Search by email…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input className="input w-64 max-lg:w-full" placeholder="Search by email…" value={search} onChange={(e) => setSearch(e.target.value)} />
         {isSuperAdmin && (
           <button className="btn-secondary" onClick={openAddUser}>+ Add User</button>
         )}
@@ -173,7 +173,7 @@ export default function UsersTab() {
           {
             header: 'Actions',
             cell: (r: any) => (
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <div className="flex flex-row flex-wrap gap-2 max-lg:flex-col">
                 <button className="text-xs text-brand-ink hover:underline" onClick={() => toggleActive(r.id, r.isActive)}>{r.isActive ? 'Deactivate' : 'Activate'}</button>
                 <button className="text-xs text-ink-muted hover:underline" onClick={() => resetPasswordGenerated(r.id)}>Generate Temp Password</button>
                 <button className="text-xs text-ink-muted hover:underline" onClick={() => setResetTarget(r)}>Set Custom Password</button>

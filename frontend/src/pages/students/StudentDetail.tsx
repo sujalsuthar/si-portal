@@ -163,7 +163,7 @@ export default function StudentDetail() {
             <div className="card divide-y divide-edge">
               {(gradeHistory ?? []).length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-muted">No published exam marks yet</p>}
               {(gradeHistory ?? []).map((g: any) => (
-                <div key={g.id} className="flex flex-col gap-1 px-4 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <div key={g.id} className="flex items-center justify-between px-4 py-2.5 text-sm max-lg:flex-col max-lg:items-start max-lg:gap-1">
                   <span className="min-w-0 break-words text-ink">{g.exam?.title ?? '-'}</span>
                   <span className="shrink-0 text-ink-muted">{g.exam?.examDate ? new Date(g.exam.examDate).toLocaleDateString() : '-'} · {g.marksObtained}/{g.exam?.totalMarks ?? '-'} ({g.percentage.toFixed(1)}%)</span>
                 </div>

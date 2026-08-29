@@ -38,7 +38,7 @@ export default function FacultyList() {
       <PageHeader
         title="Team"
         subtitle="Instructor and mentor profiles and their mentored students."
-        actions={<input className="input w-full sm:w-56" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} />}
+        actions={<input className="input w-56 max-lg:w-full" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} />}
       />
       <Table
         loading={isLoading}

@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-29
 
-This document tracks responsive work applied across the SI Portal frontend. Desktop appearance is preserved at `md` (768px) and above.
+This document tracks responsive work applied across the SI Portal frontend. **Desktop/laptop appearance is preserved at `lg` (1024px) and above** — mobile-only styles use `max-lg:` or `@media (max-width: 1023px)`.
 
 ---
 
@@ -12,7 +12,7 @@ This document tracks responsive work applied across the SI Portal frontend. Desk
 |------|---------|
 | `frontend/src/index.css` | `overflow-x: clip` on root; `.form-grid`, `.form-grid-3`, `.filter-row`, `.calendar-scroll`; tighter table padding on mobile; contained table overflow |
 | `frontend/src/components/Layout.tsx` | Mobile sidebar close button; hamburger toggle; `max-w-[85vw]` drawer; header overflow fixes; role label on mobile |
-| `frontend/src/components/ui.tsx` | `Table` — desktop table at `md+`, card rows below `md`; `Modal` — bottom sheet on mobile, scrollable body; `PageHeader` — full-width actions on small screens |
+| `frontend/src/components/ui.tsx` | `Table` — desktop table at `lg+`, card rows below `lg`; `Modal` — bottom sheet on mobile, original centered scroll at `lg+`; `PageHeader` — full-width actions only below `lg` |
 | `frontend/src/components/DashboardCharts.tsx` | Chart containers `min-w-0` for Recharts overflow prevention |
 
 ---
@@ -33,8 +33,8 @@ This document tracks responsive work applied across the SI Portal frontend. Desk
 
 ## Table behavior
 
-- **Desktop (`md+`):** Unchanged full data table with horizontal scroll fallback for very wide columns
-- **Mobile (`<md`):** Each row renders as a card with labeled fields — all columns preserved, no data removed
+- **Desktop (`lg+`, 1024px+):** Unchanged full data table (matches pre-responsive design)
+- **Mobile/tablet (`<lg`):** Each row renders as a card with labeled fields — all columns preserved, no data removed
 
 ---
 

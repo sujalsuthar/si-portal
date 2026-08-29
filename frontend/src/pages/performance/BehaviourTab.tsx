@@ -96,7 +96,7 @@ function StaffBehaviourView() {
               </button>
             ))}
           </div>
-          <select className="input h-8 w-full text-xs sm:w-44" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+          <select className="input h-8 w-44 max-lg:w-full" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
             <option value="">All batches</option>
             {(batches?.items ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>

@@ -53,14 +53,22 @@
 
 html, body, #root {
   height: 100%;
-  overflow-x: clip;
+}
+
+@media (max-width: 1023px) {
+  html, body, #root {
+    overflow-x: clip;
+  }
+
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
 }
 
 body {
   @apply antialiased;
   background-color: rgb(var(--color-bg));
   color: rgb(var(--color-text));
-  -webkit-text-size-adjust: 100%;
 }
 
 /* Respect the user's motion preference instead of forcing every transition on everyone. */
@@ -92,29 +100,41 @@ body {
 }
 
 .page-header-actions {
-  @apply flex w-full flex-wrap items-center gap-2 sm:w-auto;
+  @apply flex shrink-0 flex-wrap items-center gap-2;
+}
+
+@media (max-width: 1023px) {
+  .page-header-actions {
+    @apply w-full;
+  }
 }
 
 .form-grid {
-  @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
+  @apply grid grid-cols-2 gap-3 max-lg:grid-cols-1;
 }
 
 .form-grid-3 {
-  @apply grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3;
+  @apply grid grid-cols-3 gap-3 max-lg:grid-cols-1;
 }
 
 .filter-row {
-  @apply mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center;
+  @apply mb-3 flex flex-wrap items-center gap-2 max-lg:flex-col max-lg:items-stretch;
 }
 
 .calendar-scroll {
-  @apply overflow-x-auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  /* mobile-only — see media query below */
 }
 
-.calendar-scroll-inner {
-  @apply min-w-[640px];
+@media (max-width: 1023px) {
+  .calendar-scroll {
+    @apply overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .calendar-scroll-inner {
+    @apply min-w-[640px];
+  }
 }
 
 .tab-bar {
@@ -144,8 +164,14 @@ body {
 }
 
 .menu-item {
-  @apply block w-full px-3 py-2.5 text-left text-xs text-ink transition-colors;
+  @apply block w-full px-3 py-2 text-left text-xs text-ink transition-colors;
   @apply hover:bg-surface-muted focus-visible:outline-none focus-visible:bg-surface-muted;
+}
+
+@media (max-width: 1023px) {
+  .menu-item {
+    @apply py-2.5;
+  }
 }
 
 .menu-item-danger {
@@ -153,13 +179,25 @@ body {
 }
 
 .table-wrap {
-  @apply overflow-hidden;
+  @apply overflow-visible;
+}
+
+@media (max-width: 1023px) {
+  .table-wrap {
+    @apply overflow-hidden;
+  }
 }
 
 .table-scroll {
-  @apply max-w-full overflow-x-auto;
-  -webkit-overflow-scrolling: touch;
+  @apply overflow-x-auto;
   scrollbar-width: thin;
+}
+
+@media (max-width: 1023px) {
+  .table-scroll {
+    @apply max-w-full;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .data-table {
@@ -178,7 +216,7 @@ body {
   @apply px-4 py-3 align-middle text-ink;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .data-table th,
   .data-table td {
     @apply px-3 py-2.5;

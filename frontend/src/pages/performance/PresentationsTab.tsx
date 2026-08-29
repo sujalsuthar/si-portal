@@ -80,7 +80,7 @@ export default function PresentationsTab() {
     <div>
       {isStaff && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <select className="input h-8 w-full text-xs sm:w-44" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+          <select className="input h-8 w-44 max-lg:w-full" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
             <option value="">All batches</option>
             {(batchItems).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>

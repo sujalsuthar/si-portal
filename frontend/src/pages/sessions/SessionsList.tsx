@@ -289,12 +289,12 @@ function FullWeekModal({ batches, faculty, onClose, onCreated }: { batches: any[
 
         <div className="space-y-2">
           {days.map((d, i) => (
-            <div key={i} className="flex flex-col gap-2 rounded-lg border border-edge p-2 sm:flex-row sm:items-center">
+            <div key={i} className="flex items-center rounded-lg border border-edge p-2 max-lg:flex-col max-lg:items-stretch max-lg:gap-2">
               <label className="flex shrink-0 items-center gap-2 sm:w-28">
                 <input type="checkbox" checked={d.enabled} onChange={(e) => updateDay(i, { enabled: e.target.checked })} />
                 <span className="text-sm font-medium text-ink">{WEEKDAYS[i]}</span>
               </label>
-              <input className="input w-full sm:w-28" type="time" value={d.time} disabled={!d.enabled} onChange={(e) => updateDay(i, { time: e.target.value })} />
+              <input className="input w-28 max-lg:w-full" type="time" value={d.time} disabled={!d.enabled} onChange={(e) => updateDay(i, { time: e.target.value })} />
               <input className="input min-w-0 flex-1" placeholder="Topic" disabled={!d.enabled} value={d.topic} onChange={(e) => updateDay(i, { topic: e.target.value })} />
               <input className="input min-w-0 flex-1" placeholder="Description" disabled={!d.enabled} value={d.description} onChange={(e) => updateDay(i, { description: e.target.value })} />
             </div>

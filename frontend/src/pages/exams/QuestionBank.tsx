@@ -69,7 +69,7 @@ export default function QuestionBank() {
         subtitle="Build questions on the left, then assemble them into an exam paper on the right."
         actions={
           <>
-            <input className="input w-full sm:w-56" placeholder="Search questions…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="input w-56 max-lg:w-full" placeholder="Search questions…" value={search} onChange={(e) => setSearch(e.target.value)} />
             <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Add Question</button>
           </>
         }
@@ -206,7 +206,7 @@ function BuildPaperPanel({
   }
 
   return (
-    <div className="card static space-y-3 p-4 lg:sticky lg:top-4">
+    <div className="card sticky top-4 space-y-3 p-4 max-lg:static">
       <h2 className="text-sm font-semibold text-ink">Paper Creation</h2>
       <p className="text-xs text-ink-muted">Save reusable papers here anytime. When scheduling an exam, attach a saved paper from the exam detail page.</p>
 
