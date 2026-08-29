@@ -232,8 +232,15 @@ export default function ProjectDetail() {
     );
   }
 
+  const listHref = project.kind === 'INTERN' ? '/projects/interns' : '/projects/students';
+
   return (
     <div>
+      {isStaff && (
+        <Link to={listHref} className="mb-2 inline-block text-sm text-brand-ink hover:underline">
+          &larr; {project.kind === 'INTERN' ? 'Intern Projects' : 'Student Projects'}
+        </Link>
+      )}
       <PageHeader
         title={project.name}
         subtitle={`${project.kind === 'INTERN' ? 'Intern' : 'Student'} Project · ${project.batch.name} · Group size: ${project.groupSize}${project.deadline ? ` · Deadline: ${new Date(project.deadline).toLocaleDateString()}` : ''}`}
