@@ -154,4 +154,6 @@ _Add new rows below as requests arrive._
 
 | # | Area | Request | Status |
 |---|------|---------|--------|
-| | | | |
+| 13 | Nav | Remove Search from sidebar (dashboard only) | Done |
+| 14 | Projects | Separate Student Projects and Intern Projects views | Done |
+| 15 | Search / Parents | Admin dashboard search finds parents by linked student name | Done |

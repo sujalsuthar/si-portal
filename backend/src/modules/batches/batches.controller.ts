@@ -35,9 +35,11 @@ batchesRouter.get(
     const pagination = getPagination(req, 50);
     const courseId = req.query.courseId as string | undefined;
     const status = req.query.status as BatchStatus | undefined;
+    const hasInterns = req.query.hasInterns === 'true';
     const where: Record<string, unknown> = {
       ...(courseId ? { courseId } : {}),
       ...(status ? { status } : {}),
+      ...(hasInterns ? { students: { some: { internStatus: { not: null } } } } : {}),
     };
     if (req.auth!.role === RoleName.FACULTY) {
       where.id = { in: await getFacultyBatchIds(req.auth!.facultyId!) };

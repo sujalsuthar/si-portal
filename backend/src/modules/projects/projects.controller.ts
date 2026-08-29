@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { RoleName } from '@prisma/client';
+import { ProjectKind, RoleName } from '@prisma/client';
 import { z } from 'zod';
 import { asyncHandler } from '@/utils/asyncHandler';
 import { authenticate, authorize, ROLE_GROUPS, AuthContext } from '@/middleware/auth';
@@ -17,6 +17,7 @@ const createSchema = z.object({
   scope: z.string().optional(),
   groupSize: z.number().int().positive(),
   deadline: z.coerce.date().optional(),
+  kind: z.nativeEnum(ProjectKind).default(ProjectKind.STUDENT),
 });
 
 /** Every group a member of this student's group can act on the group's own record. */
@@ -39,7 +40,11 @@ projectsRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const batchId = req.query.batchId as string | undefined;
-    const where: Record<string, unknown> = { ...(batchId ? { batchId } : {}) };
+    const kind = req.query.kind as ProjectKind | undefined;
+    const where: Record<string, unknown> = {
+      ...(batchId ? { batchId } : {}),
+      ...(kind === ProjectKind.STUDENT || kind === ProjectKind.INTERN ? { kind } : {}),
+    };
 
     if (req.auth!.role === RoleName.STUDENT) {
       where.groups = { some: { members: { some: { studentId: req.auth!.studentId } } } };
@@ -64,10 +69,17 @@ projectsRouter.post(
     const data = createSchema.parse(req.body);
     if (req.auth!.role === RoleName.FACULTY) {
       await assertBatchAccess(req.auth!, data.batchId);
-      // 4.1: Team members are restricted to Intern Projects; Super Admin/Academic Admin may
-      // still create a normal (non-intern) project for any batch.
+      // Team members are restricted to Intern Projects.
+      if (data.kind !== ProjectKind.INTERN) {
+        throw ApiError.forbidden('Team members can only create Intern Projects');
+      }
       const internCount = await prisma.student.count({ where: { currentBatchId: data.batchId, internStatus: { not: null } } });
       if (internCount === 0) throw ApiError.badRequest('Team members can only create projects for a batch with intern students');
+    }
+
+    if (data.kind === ProjectKind.INTERN) {
+      const internCount = await prisma.student.count({ where: { currentBatchId: data.batchId, internStatus: { not: null } } });
+      if (internCount === 0) throw ApiError.badRequest('Intern Projects require a batch that has intern students');
     }
 
     const project = await prisma.project.create({ data: { ...data, createdById: req.auth!.userId } });

@@ -140,6 +140,19 @@ searchRouter.get(
               { lastName: ilike(q) },
               { phone: ilike(q) },
               { user: { email: ilike(q) } },
+              {
+                students: {
+                  some: {
+                    student: {
+                      OR: [
+                        { firstName: ilike(q) },
+                        { lastName: ilike(q) },
+                        { studentCode: ilike(q) },
+                      ],
+                    },
+                  },
+                },
+              },
             ],
           },
         ],
@@ -151,6 +164,19 @@ searchRouter.get(
           { lastName: ilike(q) },
           { phone: ilike(q) },
           { user: { email: ilike(q) } },
+          {
+            students: {
+              some: {
+                student: {
+                  OR: [
+                    { firstName: ilike(q) },
+                    { lastName: ilike(q) },
+                    { studentCode: ilike(q) },
+                  ],
+                },
+              },
+            },
+          },
         ],
       };
     }

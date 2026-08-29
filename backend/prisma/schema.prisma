@@ -1396,22 +1396,29 @@ model RefundRequest {
 // Projects (SAMP 2.0)
 // ---------------------------------------------------------------------------
 
+enum ProjectKind {
+  STUDENT
+  INTERN
+}
+
 model Project {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   batchId     String
-  batch       Batch     @relation(fields: [batchId], references: [id])
+  batch       Batch       @relation(fields: [batchId], references: [id])
   name        String
   scope       String?
   groupSize   Int
+  kind        ProjectKind @default(STUDENT)
   deadline    DateTime?
-  gradingOpen Boolean   @default(true)
+  gradingOpen Boolean     @default(true)
   createdById String
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime    @default(now())
 
   groups  ProjectGroup[]
   members ProjectMember[]
 
   @@index([batchId])
+  @@index([kind])
 }
 
 model ProjectGroup {
