@@ -27,6 +27,7 @@ import {
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import QRCode from 'qrcode';
+import { seedCyberSecurityDemo } from './seed-cyber-demo';
 
 const prisma = new PrismaClient();
 const DEMO_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'ChangeMe123!';
@@ -55,12 +56,12 @@ async function seedNamedUsers() {
     {
       email: 'subham.shah@siportal.edu',
       role: RoleName.FACULTY as RoleName,
-      faculty: { employeeCode: 'FAC-010', firstName: 'Subham', lastName: 'Shah', department: 'Web Development', designation: 'Instructor' },
+      faculty: { employeeCode: 'FAC-010', firstName: 'Subham', lastName: 'Shah', department: 'Cyber Security', designation: 'Security Instructor' },
     },
     {
       email: 'krish.solanki@siportal.edu',
       role: RoleName.FACULTY as RoleName,
-      faculty: { employeeCode: 'FAC-011', firstName: 'Krish', lastName: 'Solanki', department: 'Web Development', designation: 'Instructor' },
+      faculty: { employeeCode: 'FAC-011', firstName: 'Krish', lastName: 'Solanki', department: 'Cyber Security', designation: 'Security Instructor' },
     },
   ];
 
@@ -145,6 +146,7 @@ async function main() {
   const existingStudents = await prisma.student.count();
   if (existingStudents > 0) {
     console.log(`Seed skipped: database already has ${existingStudents} students (demo data present).`);
+    await seedCyberSecurityDemo(prisma);
     await seedStaffNotifications();
     return;
   }
@@ -751,6 +753,7 @@ async function main() {
   console.log(`  Named team: sujal.suthar@, sagar.patel@, subham.shah@, krish.solanki@ (password: ${DEMO_PASSWORD})`);
   console.log(`  No account has two-factor authentication enabled by default — set it up under Settings > Profile & Password.`);
 
+  await seedCyberSecurityDemo(prisma);
   await seedStaffNotifications();
 }
 

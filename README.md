@@ -530,6 +530,10 @@ After seeding (`npm run prisma:seed` or `SEED_ON_START=true`), every account sha
 | Academic Admin | `academic.admin@siportal.edu`, `sagar.patel@siportal.edu` |
 | Accounts | `accounts@siportal.edu` |
 | Team | `priya.faculty@`, `arjun.faculty@`, `neha.faculty@`, `subham.shah@`, `krish.solanki@` (all `@siportal.edu`) |
+| **Cyber Security students** | `rahul.verma@`, `neha.desai@`, `dev.shah@`, `kiran.mehta@` (all `@student.siportal.edu`, batch **CYSEC-2026-A**) |
+
+**Cyber Security demo content** (auto-seeded on every deploy): course **CYSEC**, batch **Cyber Security 2026 Batch A**, 10 feed posts (OWASP, SIEM, phishing, Zero Trust, etc.), labs, exam, task, SOC project, and Security+/CEH certifications. Check **Feed**, **Performance → Batches**, **Exams**, **Tasks**, **Projects**, **Interns**, and the notification bell.
+
 | Student | `aarav.kumar@student.siportal.edu` (and 9 more — see seed output; the 2nd student is a seeded Intern) |
 | Parent | `parent.aarav@siportal.edu` (and 9 more) |
 
