@@ -344,8 +344,31 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
   );
 }
 
-export function EmptyState({ text }: { text: string }) {
-  return <div className="card p-8 text-center text-sm text-ink-muted">{text}</div>;
+export function EmptyState({
+  text,
+  action,
+}: {
+  text: string;
+  action?: { label: string; to?: string; onClick?: () => void };
+}) {
+  return (
+    <div className="card p-8 text-center">
+      <p className="text-sm text-ink-muted">{text}</p>
+      {action && (
+        <div className="mt-4 flex justify-center">
+          {action.to ? (
+            <Link to={action.to} className="btn-primary">
+              {action.label}
+            </Link>
+          ) : (
+            <button type="button" className="btn-primary" onClick={action.onClick}>
+              {action.label}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function Spinner() {

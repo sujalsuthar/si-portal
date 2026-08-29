@@ -66,6 +66,11 @@ export default function SessionsList() {
         loading={isLoading}
         rows={data?.items ?? []}
         keyFn={(r: any) => r.id}
+        emptyText={
+          canCreate
+            ? 'No sessions yet — schedule a session to get started.'
+            : 'No sessions found'
+        }
         columns={[
           { header: 'Date', cell: (r: any) => new Date(r.sessionDate).toLocaleString() },
           { header: 'Batch', cell: (r: any) => <button className="text-brand-ink hover:underline font-medium" onClick={() => navigate(`/sessions/${r.id}`)}>{r.batch.name}</button> },

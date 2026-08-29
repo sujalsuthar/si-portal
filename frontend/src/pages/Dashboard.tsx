@@ -1,12 +1,17 @@
-﻿import { useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
-import { PageHeader, StatCard, Spinner, Badge } from '@/components/ui';
+import { PageHeader, StatCard, Spinner, Badge, Modal } from '@/components/ui';
 import DashboardCharts from '@/components/DashboardCharts';
-import { GlobalUserSearch } from '@/pages/search/UserSearchPage';
+import OnboardingCard from '@/components/OnboardingCard';
+import { RoleName } from '@/types';
+
+type AttentionItem = { id: string; text: string; to?: string; tone?: 'default' | 'warn' | 'bad' };
+type QuickAction = { label: string; to: string };
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -16,36 +21,229 @@ export default function Dashboard() {
   });
 
   if (isLoading) return <Spinner />;
+  if (!user) return null;
+
+  const firstName =
+    user.profile && typeof user.profile === 'object' && 'firstName' in user.profile
+      ? String((user.profile as { firstName?: string }).firstName ?? '')
+      : '';
+
+  const attention = buildAttention(user.role, data, user);
+  const actions = buildQuickActions(user.role, data, user);
 
   return (
     <div>
-      <PageHeader title={`Welcome back${user?.profile ? `, ${(user.profile as { firstName?: string }).firstName ?? ''}` : ''}`} subtitle="Here's what needs your attention today." />
+      {user && <OnboardingCard role={user.role} userId={user.id} />}
 
-      {(user?.role === 'SUPER_ADMIN' || user?.role === 'ACADEMIC_ADMIN' || user?.role === 'FACULTY') && (
-        <GlobalUserSearch role={user!.role} />
+      <PageHeader
+        title={`Welcome back${firstName ? `, ${firstName}` : ''}`}
+        subtitle={roleSubtitle(user.role)}
+      />
+
+      {attention.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-2 text-sm font-semibold text-ink">Needs attention</h2>
+          <div className="card divide-y divide-edge">
+            {attention.slice(0, 5).map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                <span className={item.tone === 'bad' ? 'text-red-600 dark:text-red-400' : item.tone === 'warn' ? 'text-amber-700 dark:text-amber-400' : 'text-ink'}>
+                  {item.text}
+                </span>
+                {item.to && (
+                  <Link to={item.to} className="btn-secondary shrink-0 py-1.5 text-xs">
+                    Open
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
-      {(user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGEMENT') && (
-        <ManagementDashboard data={data} />
+      {actions.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-2 text-sm font-semibold text-ink">Quick actions</h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {actions.map((a) => (
+              <Link key={a.to + a.label} to={a.to} className="btn-secondary justify-center px-3 py-3 text-center text-sm font-semibold">
+                {a.label}
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
-      {user?.role === 'ACADEMIC_ADMIN' && <AdminDashboard data={data} />}
-      {user?.role === 'ACCOUNTS' && <AccountsDashboard data={data} />}
-      {user?.role === 'FACULTY' && <FacultyDashboard data={data} />}
-      {user?.role === 'STUDENT' && <StudentDashboard data={data} />}
-      {user?.role === 'PARENT' && <ParentDashboard data={data} />}
 
-      <DashboardCharts />
+      {(user.role === 'SUPER_ADMIN' || user.role === 'MANAGEMENT') && <ManagementDashboard data={data} />}
+      {user.role === 'ACADEMIC_ADMIN' && <AdminDashboard data={data} />}
+      {user.role === 'ACCOUNTS' && <AccountsDashboard data={data} />}
+      {user.role === 'FACULTY' && <FacultyDashboard data={data} />}
+      {user.role === 'STUDENT' && <StudentDashboard data={data} />}
+      {user.role === 'PARENT' && <ParentDashboard data={data} />}
+
+      <div className="mt-8">
+        <DashboardCharts />
+      </div>
     </div>
   );
 }
 
+function roleSubtitle(role: RoleName) {
+  switch (role) {
+    case 'STUDENT':
+      return 'Your classes, tasks, and progress for today.';
+    case 'PARENT':
+      return 'How your child is doing — attendance, progress, and fees.';
+    case 'FACULTY':
+      return 'Your sessions, evaluations, and assigned batches.';
+    case 'ACCOUNTS':
+      return 'Fees, reconciliation, and payment follow-ups.';
+    case 'ACADEMIC_ADMIN':
+      return 'Transfers, batches, and what needs a decision today.';
+    default:
+      return "Here's what needs your attention today.";
+  }
+}
+
+function buildAttention(role: RoleName, data: any, user: { profile?: unknown }): AttentionItem[] {
+  const items: AttentionItem[] = [];
+  if (role === 'STUDENT') {
+    if (data?.belowAttendanceThreshold) {
+      items.push({ id: 'att', text: `Attendance is below threshold (${data?.attendancePct ?? 0}%)`, to: '/performance', tone: 'warn' });
+    }
+    const overdue = data?.overdueTasks ?? [];
+    if (overdue.length > 0) {
+      items.push({
+        id: 'od',
+        text: `${overdue.length} overdue task${overdue.length === 1 ? '' : 's'}`,
+        to: `/tasks/${overdue[0]?.task?.id ?? overdue[0]?.taskId ?? ''}`,
+        tone: 'bad',
+      });
+    }
+    const upcoming = data?.upcomingSessions ?? [];
+    if (upcoming[0]) {
+      items.push({
+        id: 'sess',
+        text: `Next session: ${upcoming[0].topic}`,
+        to: `/sessions/${upcoming[0].id}`,
+      });
+    }
+  }
+  if (role === 'FACULTY') {
+    if ((data?.pendingEvaluationsCount ?? 0) > 0) {
+      items.push({ id: 'eval', text: `${data.pendingEvaluationsCount} pending evaluation(s)`, to: '/exams', tone: 'warn' });
+    }
+    if ((data?.studentConcerns?.length ?? 0) > 0) {
+      items.push({ id: 'concern', text: `${data.studentConcerns.length} open concern(s)`, to: '/action-centre', tone: 'warn' });
+    }
+    const today = data?.todaySessions ?? [];
+    if (today[0]) {
+      items.push({ id: 'today', text: `Next class: ${today[0].topic} — ${today[0].batch?.name ?? ''}`, to: `/sessions/${today[0].id}` });
+    }
+  }
+  if (role === 'ACADEMIC_ADMIN') {
+    const pending = data?.pendingTransfers ?? [];
+    if (pending.length > 0) {
+      items.push({ id: 'tr', text: `${pending.length} pending batch transfer(s)`, tone: 'warn' });
+    }
+  }
+  if (role === 'ACCOUNTS') {
+    const c = data?.counts ?? {};
+    if ((c.openInstalments ?? 0) > 0) {
+      items.push({ id: 'inst', text: `${c.openInstalments} open instalment(s)`, to: '/fees', tone: 'warn' });
+    }
+    if ((c.pendingReconciliation ?? 0) > 0) {
+      items.push({ id: 'rec', text: `${c.pendingReconciliation} need reconciliation`, to: '/fees', tone: 'warn' });
+    }
+  }
+  if (role === 'PARENT') {
+    for (const child of data?.children ?? []) {
+      if (child.attendancePct != null && child.attendancePct < 75) {
+        items.push({
+          id: `att-${child.id}`,
+          text: `${child.name}: attendance ${Number(child.attendancePct).toFixed(0)}%`,
+          to: `/my/${child.id}`,
+          tone: 'warn',
+        });
+      }
+    }
+  }
+  if (role === 'SUPER_ADMIN' || role === 'MANAGEMENT') {
+    const kpis = data?.kpis ?? {};
+    if (kpis.activeStudents != null) {
+      items.push({ id: 'kpi', text: `${kpis.activeStudents} active students · ${kpis.activeBatches ?? 0} batches`, to: '/batches' });
+    }
+  }
+  void user;
+  return items;
+}
+
+function buildQuickActions(role: RoleName, data: any, user: { profile?: unknown }): QuickAction[] {
+  if (role === 'STUDENT') {
+    const profileId =
+      user.profile && typeof user.profile === 'object' && 'id' in user.profile
+        ? String((user.profile as { id: string }).id)
+        : null;
+    return [
+      { label: 'View tasks', to: '/tasks' },
+      { label: 'My performance', to: '/performance' },
+      { label: 'Fees', to: '/fees' },
+      { label: 'Raise request', to: '/action-centre' },
+      ...(profileId ? [{ label: 'My profile', to: `/my/${profileId}` }] : []),
+    ].slice(0, 4);
+  }
+  if (role === 'PARENT') {
+    const firstChild = data?.children?.[0];
+    return [
+      ...(firstChild ? [{ label: 'View child', to: `/my/${firstChild.id}` }] : [{ label: 'Dashboard', to: '/' }]),
+      { label: 'Fees', to: '/fees' },
+      { label: 'Raise request', to: '/action-centre' },
+      { label: 'Feed', to: '/feed' },
+    ];
+  }
+  if (role === 'FACULTY') {
+    const firstSession = data?.todaySessions?.[0];
+    return [
+      { label: "Today's sessions", to: '/sessions' },
+      ...(firstSession
+        ? [{ label: 'Take attendance', to: `/sessions/${firstSession.id}` }]
+        : [{ label: 'Open sessions', to: '/sessions' }]),
+      { label: 'Tasks', to: '/tasks' },
+      { label: 'Intern projects', to: '/projects/interns' },
+    ];
+  }
+  if (role === 'ACADEMIC_ADMIN') {
+    return [
+      { label: 'Sessions', to: '/sessions' },
+      { label: 'Exams', to: '/exams' },
+      { label: 'Students', to: '/people/students' },
+      { label: 'Batches', to: '/batches' },
+    ];
+  }
+  if (role === 'ACCOUNTS') {
+    return [
+      { label: 'Fees', to: '/fees' },
+      { label: 'Reports', to: '/reports' },
+      { label: 'Certificates', to: '/certificates' },
+      { label: 'Action Centre', to: '/action-centre' },
+    ];
+  }
+  if (role === 'SUPER_ADMIN' || role === 'MANAGEMENT') {
+    return [
+      { label: 'Batches', to: '/batches' },
+      { label: 'Reports', to: '/reports' },
+      { label: 'Settings', to: '/settings' },
+      { label: 'Students', to: '/people/students' },
+    ];
+  }
+  return [];
+}
+
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** Alternates Navy Blue / Red per day of the week, starting Sunday=Red - matches the backend's coloring. */
-function dayColorClasses(dayIndex: number, active: boolean) {
-  const isRed = dayIndex % 2 === 0;
-  if (!active) return 'bg-surface-muted text-ink-muted';
-  return isRed ? 'bg-red-600 text-white dark:bg-red-700' : 'bg-blue-900 text-white dark:bg-blue-950';
+function dayHeaderClasses(isToday: boolean) {
+  return isToday
+    ? 'bg-brand-600 text-ink'
+    : 'bg-surface-muted text-ink';
 }
 
 function formatSessionTime(sessionDate: string) {
@@ -66,7 +264,8 @@ function WeekCalendar({ weekSessions, readOnly = false }: { weekSessions: any[];
     const date = new Date(weekStart);
     date.setDate(date.getDate() + i);
     const sessions = (weekSessions ?? []).filter((s) => new Date(s.sessionDate).toDateString() === date.toDateString());
-    return { date, dayIndex: i, sessions };
+    const isToday = date.toDateString() === today.toDateString();
+    return { date, dayIndex: i, sessions, isToday };
   });
 
   return (
@@ -75,7 +274,7 @@ function WeekCalendar({ weekSessions, readOnly = false }: { weekSessions: any[];
       <div className="space-y-2 lg:hidden">
         {days.map((d) => (
           <div key={d.dayIndex} className="card overflow-hidden">
-            <div className={`px-3 py-2 text-xs font-semibold ${dayColorClasses(d.dayIndex, true)}`}>
+            <div className={`px-3 py-2 text-xs font-semibold ${dayHeaderClasses(d.isToday)}`}>
               {WEEKDAY_LABELS[d.dayIndex]} {d.date.getDate()}
             </div>
             <div className="space-y-1 p-2">
@@ -101,7 +300,7 @@ function WeekCalendar({ weekSessions, readOnly = false }: { weekSessions: any[];
       <div className="hidden grid-cols-7 gap-2 lg:grid">
         {days.map((d) => (
           <div key={d.dayIndex} className="min-w-0">
-            <div className={`rounded-t-lg px-2 py-1.5 text-center text-xs font-semibold ${dayColorClasses(d.dayIndex, true)}`}>
+            <div className={`rounded-t-lg px-2 py-1.5 text-center text-xs font-semibold ${dayHeaderClasses(d.isToday)}`}>
               {WEEKDAY_LABELS[d.dayIndex]} {d.date.getDate()}
             </div>
             <div className="card min-h-[4.5rem] space-y-1 rounded-t-none p-1.5">
@@ -160,15 +359,36 @@ function ManagementDashboard({ data }: { data: any }) {
 function AdminDashboard({ data }: { data: any }) {
   const queryClient = useQueryClient();
   const counts = data?.counts ?? {};
+  const [rejectId, setRejectId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  async function decideTransfer(id: string, action: 'approve' | 'reject') {
-    const reason = action === 'reject' ? window.prompt('Reason for rejection (optional):') ?? undefined : undefined;
+  async function approve(id: string) {
+    setBusy(true);
     try {
-      await api.patch(`/batch-transfers/${id}/${action}`, action === 'reject' ? { reason: reason || 'Rejected by admin' } : {});
-      toast.success(action === 'approve' ? 'Transfer approved' : 'Transfer rejected');
+      await api.patch(`/batch-transfers/${id}/approve`, {});
+      toast.success('Transfer approved');
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'me'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmReject() {
+    if (!rejectId) return;
+    setBusy(true);
+    try {
+      await api.patch(`/batch-transfers/${rejectId}/reject`, { reason: rejectReason.trim() || 'Rejected by admin' });
+      toast.success('Transfer rejected');
+      setRejectId(null);
+      setRejectReason('');
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'me'] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -189,15 +409,39 @@ function AdminDashboard({ data }: { data: any }) {
       <div className="card divide-y divide-edge">
         {(data?.pendingTransfers ?? []).length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-muted">No pending transfers</p>}
         {(data?.pendingTransfers ?? []).map((t: any) => (
-        <div key={t.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm max-lg:flex-col max-lg:items-start max-lg:gap-2">
-            <span className="min-w-0 break-words">{t.student.firstName} {t.student.lastName} → {t.toBatch.name}</span>
-            <div className="flex shrink-0 items-center gap-2 text-xs">
-              <button type="button" className="text-emerald-700 dark:text-emerald-400 hover:underline" onClick={() => decideTransfer(t.id, 'approve')}>Approve</button>
-              <button type="button" className="text-red-600 dark:text-red-400 hover:underline" onClick={() => decideTransfer(t.id, 'reject')}>Reject</button>
+          <div key={t.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm max-lg:flex-col max-lg:items-start max-lg:gap-2">
+            <span className="min-w-0 break-words">
+              {t.student.firstName} {t.student.lastName} → {t.toBatch.name}
+            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              <button type="button" className="btn-primary py-1.5 text-xs" disabled={busy} onClick={() => approve(t.id)}>
+                Approve
+              </button>
+              <button type="button" className="btn-danger py-1.5 text-xs" disabled={busy} onClick={() => { setRejectId(t.id); setRejectReason(''); }}>
+                Reject
+              </button>
             </div>
           </div>
         ))}
       </div>
+
+      <Modal open={!!rejectId} onClose={() => !busy && setRejectId(null)} title="Reject transfer">
+        <div className="space-y-3">
+          <p className="text-sm text-ink-muted">Optionally add a reason for the student or requesting staff.</p>
+          <label className="block">
+            <span className="label">Reason (optional)</span>
+            <textarea className="input" rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+          </label>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-ghost" disabled={busy} onClick={() => setRejectId(null)}>
+              Cancel
+            </button>
+            <button type="button" className="btn-danger" disabled={busy} onClick={confirmReject}>
+              {busy ? 'Rejecting…' : 'Confirm reject'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -233,7 +477,9 @@ function FacultyDashboard({ data }: { data: any }) {
         {(data?.todaySessions ?? []).length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-muted">No sessions scheduled today</p>}
         {(data?.todaySessions ?? []).map((s: any) => (
           <Link key={s.id} to={`/sessions/${s.id}`} className="flex items-center justify-between px-4 py-3 text-sm hover:bg-surface-muted">
-            <span>{s.topic} - {s.batch.name}</span>
+            <span>
+              {s.topic} - {s.batch.name}
+            </span>
             <Badge tone={s.status === 'COMPLETED' ? 'green' : 'blue'}>{s.status}</Badge>
           </Link>
         ))}
@@ -245,7 +491,7 @@ function FacultyDashboard({ data }: { data: any }) {
 function StudentDashboard({ data }: { data: any }) {
   const { user } = useAuth();
   const composite = data?.composite;
-  const studentId = user?.profile?.id;
+  const studentId = user?.profile && typeof user.profile === 'object' && 'id' in user.profile ? (user.profile as { id: string }).id : undefined;
   return (
     <div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -256,7 +502,9 @@ function StudentDashboard({ data }: { data: any }) {
       </div>
       {studentId && (
         <div className="mt-4">
-          <Link to={`/my/${studentId}`} className="text-sm font-medium text-brand-ink hover:underline">View my student details →</Link>
+          <Link to={`/my/${studentId}`} className="text-sm font-medium text-brand-ink hover:underline">
+            View my student details →
+          </Link>
         </div>
       )}
       {composite && (

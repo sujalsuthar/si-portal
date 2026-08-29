@@ -57,6 +57,11 @@ export default function ExamsList() {
         loading={isLoading}
         rows={data?.items ?? []}
         keyFn={(r: any) => r.id}
+        emptyText={
+          canCreate
+            ? 'No exams yet — use Create Exam to get started.'
+            : 'No exams found'
+        }
         columns={[
           { header: 'Title', cell: (r: any) => <Link className="font-medium text-brand-ink hover:underline" to={user?.role === 'STUDENT' ? `/exams/${r.id}/take` : `/exams/${r.id}`}>{r.title}</Link> },
           { header: 'Batch', cell: (r: any) => r.batch.name },

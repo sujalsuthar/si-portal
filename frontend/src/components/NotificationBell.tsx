@@ -67,7 +67,8 @@ export default function NotificationBell() {
                 data.items.map((n) => (
                   <div
                     key={n.id}
-                    className={`border-b border-edge px-4 py-2.5 text-left text-sm ${n.isRead ? '' : 'bg-brand-600/10'}`}
+                    className={`border-b border-edge px-4 py-2.5 text-left text-sm select-text ${n.isRead ? '' : 'bg-brand-600/10'}`}
+                    style={{ cursor: 'default' }}
                   >
                     <p className="font-medium text-ink">{n.title}</p>
                     <p className="mt-0.5 text-xs text-ink-muted line-clamp-2">{n.message}</p>

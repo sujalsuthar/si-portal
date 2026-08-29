@@ -42,7 +42,7 @@ export default function ProjectsList({ fixedKind }: Props) {
       return (
         <div>
           <PageHeader title="Projects" subtitle="Your batch project." />
-          <EmptyState text="No project assigned to your batch yet." />
+          <EmptyState text="No project assigned to your batch yet." action={{ label: 'Back to dashboard', to: '/' }} />
         </div>
       );
     }
