@@ -1,10 +1,9 @@
 ﻿import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
-import { PageHeader, Table, Badge, Modal } from '@/components/ui';
+import { PageHeader, Table, Badge, Modal, ActionMenu, MenuItem } from '@/components/ui';
 
 export default function CertificatesList() {
   const { user } = useAuth();
@@ -109,8 +108,8 @@ export default function CertificatesList() {
           {
             header: 'Course',
             cell: (r: any) => (
-              <span className="inline-flex items-center gap-1.5">
-                {r.title}
+              <span className="inline-flex max-w-xs items-center gap-1.5" title={r.title}>
+                <span className="truncate">{r.title}</span>
                 {r.status !== 'VALID' && <Badge tone={r.status === 'REVOKED' ? 'red' : 'amber'}>{r.status}</Badge>}
               </span>
             ),
@@ -119,18 +118,16 @@ export default function CertificatesList() {
           { header: 'Issue Date', cell: (r: any) => new Date(r.issueDate).toDateString() },
           {
             header: 'Actions',
+            className: 'whitespace-nowrap',
             cell: (r: any) => (
-              <details className="relative">
-                <summary className="cursor-pointer list-none text-xs text-brand-ink hover:underline">Actions ▾</summary>
-                <div className="card absolute right-0 z-10 mt-1 w-32 py-1 shadow-lg">
-                  <button className="block w-full px-3 py-1.5 text-left text-xs text-ink hover:bg-surface-muted" onClick={() => downloadFile(r.id, 'pdf', r.certificateNumber)}>Download PDF</button>
-                  <button className="block w-full px-3 py-1.5 text-left text-xs text-ink hover:bg-surface-muted" onClick={() => downloadFile(r.id, 'image', r.certificateNumber)}>Download Image</button>
-                  <Link className="block w-full px-3 py-1.5 text-left text-xs text-ink hover:bg-surface-muted" to={`/verify/${r.certificateNumber}`} target="_blank">Verify</Link>
-                  {canRevoke && r.status === 'VALID' && (
-                    <button className="block w-full px-3 py-1.5 text-left text-xs text-red-600 dark:text-red-400 hover:bg-surface-muted" onClick={() => setRevokeTarget(r)}>Revoke</button>
-                  )}
-                </div>
-              </details>
+              <ActionMenu>
+                <MenuItem onClick={() => downloadFile(r.id, 'pdf', r.certificateNumber)}>Download PDF</MenuItem>
+                <MenuItem onClick={() => downloadFile(r.id, 'image', r.certificateNumber)}>Download Image</MenuItem>
+                <MenuItem to={`/verify/${r.certificateNumber}`} target="_blank">Verify</MenuItem>
+                {canRevoke && r.status === 'VALID' && (
+                  <MenuItem danger onClick={() => setRevokeTarget(r)}>Revoke</MenuItem>
+                )}
+              </ActionMenu>
             ),
           },
         ]}

@@ -1,15 +1,156 @@
-import { ReactNode, useEffect, useRef } from 'react';
+import { ReactNode, createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import clsx from 'clsx';
+
+const ActionMenuContext = createContext<{ close: () => void }>({ close: () => {} });
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
-    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 className="text-xl font-semibold text-ink">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-ink-muted">{subtitle}</p>}
+    <div className="page-header mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <h1 className="text-xl font-semibold text-ink md:text-2xl">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </div>
+  );
+}
+
+export function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; onChange: (tab: string) => void }) {
+  return (
+    <div className="tab-bar" role="tablist">
+      {tabs.map((t) => (
+        <button
+          key={t}
+          type="button"
+          role="tab"
+          aria-selected={active === t}
+          onClick={() => onChange(t)}
+          className={clsx('tab-bar-item', active === t && 'tab-bar-item-active')}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+type MenuCoords = { top: number; left: number; minWidth: number };
+
+export function ActionMenu({ label = 'Actions', children, align = 'right' }: { label?: string; children: ReactNode; align?: 'left' | 'right' }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<MenuCoords>({ top: 0, left: 0, minWidth: 140 });
+
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const menuHeight = menuRef.current?.offsetHeight ?? 180;
+    const menuWidth = menuRef.current?.offsetWidth ?? 140;
+    const gap = 6;
+    const flipUp = rect.bottom + menuHeight + gap > window.innerHeight - 8;
+    const top = flipUp ? Math.max(8, rect.top - menuHeight - gap) : rect.bottom + gap;
+    const left = align === 'right'
+      ? Math.min(Math.max(8, rect.right - menuWidth), window.innerWidth - menuWidth - 8)
+      : Math.min(Math.max(8, rect.left), window.innerWidth - menuWidth - 8);
+    setCoords({ top, left, minWidth: Math.max(rect.width, 140) });
+  }, [open, align, children]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false);
+    }
+    function onScroll() {
+      setOpen(false);
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        className="menu-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+      >
+        {label} <span aria-hidden="true">▾</span>
+      </button>
+      {open && createPortal(
+        <ActionMenuContext.Provider value={{ close: () => setOpen(false) }}>
+          <div
+            ref={menuRef}
+            role="menu"
+            className="dropdown-menu"
+            style={{ top: coords.top, left: coords.left, minWidth: coords.minWidth }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {children}
+          </div>
+        </ActionMenuContext.Provider>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+export function MenuItem({
+  children,
+  onClick,
+  danger,
+  to,
+  target,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  danger?: boolean;
+  to?: string;
+  target?: string;
+}) {
+  const { close } = useContext(ActionMenuContext);
+  const className = clsx('menu-item', danger && 'menu-item-danger');
+  function handleAction(fn?: () => void) {
+    fn?.();
+    close();
+  }
+  if (to) {
+    if (target === '_blank') {
+      return (
+        <a href={to} target="_blank" rel="noopener noreferrer" className={className} role="menuitem" onClick={() => close()}>
+          {children}
+        </a>
+      );
+    }
+    return (
+      <Link to={to} className={className} role="menuitem" onClick={() => close()}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" className={className} role="menuitem" onClick={() => handleAction(onClick)}>
+      {children}
+    </button>
   );
 }
 
@@ -54,39 +195,41 @@ export function Table<T>({ columns, rows, loading, emptyText = 'No records found
   keyFn: (row: T) => string;
 }) {
   return (
-    <div className="card overflow-x-auto">
-      <table className="min-w-full divide-y divide-edge text-sm">
-        <thead className="bg-surface-muted">
-          <tr>
-            {columns.map((c, i) => (
-              <th key={i} scope="col" className={clsx('px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-ink-muted', c.className)}>
-                {c.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-edge">
-          {loading ? (
+    <div className="card table-wrap p-0">
+      <div className="table-scroll">
+        <table className="data-table">
+          <thead>
             <tr>
-              <td colSpan={columns.length} className="px-4 py-8 text-center text-ink-muted">Loading…</td>
+              {columns.map((c, i) => (
+                <th key={i} scope="col" className={clsx(c.className)}>
+                  {c.header}
+                </th>
+              ))}
             </tr>
-          ) : rows.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length} className="px-4 py-8 text-center text-ink-muted">{emptyText}</td>
-            </tr>
-          ) : (
-            rows.map((row, rowIndex) => (
-              <tr key={keyFn(row)} className="hover:bg-surface-muted/60">
-                {columns.map((c, i) => (
-                  <td key={i} className={clsx('px-4 py-2.5 align-middle', c.className)}>
-                    {c.cell(row, rowIndex)}
-                  </td>
-                ))}
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={columns.length} className="table-empty">Loading…</td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="table-empty">{emptyText}</td>
+              </tr>
+            ) : (
+              rows.map((row, rowIndex) => (
+                <tr key={keyFn(row)}>
+                  {columns.map((c, i) => (
+                    <td key={i} className={clsx(c.className)}>
+                      {c.cell(row, rowIndex)}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

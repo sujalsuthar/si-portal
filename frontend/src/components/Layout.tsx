@@ -45,19 +45,19 @@ export default function Layout() {
   const visibleNav = NAV.filter((item) => !item.roles || item.roles.includes(user.role));
 
   return (
-    <div className="flex min-h-screen bg-base">
+    <div className="flex h-dvh overflow-hidden bg-base">
       <a href="#main-content" className="skip-link">Skip to main content</a>
 
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-64 transform bg-slate-900 text-slate-200 transition-transform md:static md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col bg-slate-900 text-slate-200 transition-transform md:static md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         aria-hidden={!mobileOpen}
         aria-label="Primary navigation"
       >
-        <div className="flex h-16 items-center gap-2 px-5 border-b border-slate-800">
+        <div className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-800 px-5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-ink">S</div>
-          <span className="font-semibold text-white text-sm leading-tight">SI Portal</span>
+          <span className="text-sm font-semibold leading-tight text-white">SI Portal</span>
         </div>
-        <nav className="mt-2 space-y-0.5 px-3 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 4rem)' }}>
+        <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label="Main">
           {visibleNav.map((item) => (
             <NavLink
               key={item.to}
@@ -65,7 +65,7 @@ export default function Layout() {
               end={item.to === '/'}
               onClick={() => setMobileOpen(false)}
               className={({ isActive }) =>
-                `block min-h-[2.75rem] rounded-lg px-3 py-2.5 text-sm font-medium transition-colors flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${
+                `flex min-h-[2.75rem] items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${
                   isActive ? 'bg-brand-600 text-ink' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }`
               }
@@ -78,26 +78,28 @@ export default function Layout() {
 
       {mobileOpen && <div className="fixed inset-0 z-20 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />}
 
-      <div className="flex flex-1 flex-col min-w-0">
-        <header className="card flex h-16 items-center justify-between rounded-none border-x-0 border-t-0 px-4 md:px-6">
-          <button className="min-h-[2.75rem] min-w-[2.75rem] md:hidden rounded-lg p-2 hover:bg-surface-muted" onClick={() => setMobileOpen(true)} aria-label="Open menu">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-edge bg-surface px-4 md:px-6">
+          <button className="min-h-[2.75rem] min-w-[2.75rem] rounded-lg p-2 hover:bg-surface-muted md:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
             ☰
           </button>
-          <div className="hidden md:block text-sm text-ink-muted">
+          <div className="hidden text-sm text-ink-muted md:block">
             {roleLabel(user.role)}
           </div>
           <div className="flex items-center gap-1 sm:gap-3">
             <ThemeToggle />
             <NotificationBell />
-            <div className="text-right hidden sm:block">
+            <div className="hidden text-right sm:block">
               <p className="text-sm font-medium text-ink">{user.email}</p>
               <p className="text-xs text-ink-muted">{roleLabel(user.role)}</p>
             </div>
             <button onClick={() => logout()} className="btn-ghost text-sm">Sign out</button>
           </div>
         </header>
-        <main id="main-content" tabIndex={-1} className="flex-1 p-4 md:p-6 min-w-0 focus:outline-none">
-          <Outlet />
+        <main id="main-content" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto focus:outline-none">
+          <div className="page-content p-4 md:p-6 lg:p-8">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

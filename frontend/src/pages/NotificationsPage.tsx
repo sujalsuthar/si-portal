@@ -17,8 +17,10 @@ function PreferencesPanel() {
   if (isLoading || !data) return null;
 
   return (
-    <details className="card mb-4">
-      <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">Notification preferences</summary>
+    <details className="card mb-4 overflow-hidden">
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-ink marker:content-none [&::-webkit-details-marker]:hidden">
+        Notification preferences
+      </summary>
       <div className="divide-y divide-edge border-t border-edge">
         <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-4 py-2 text-xs font-medium text-ink-muted">
           <span>Category</span>

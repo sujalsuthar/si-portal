@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/auth/AuthContext';
-import { PageHeader } from '@/components/ui';
+import { PageHeader, TabBar } from '@/components/ui';
 import BehaviourTab from './BehaviourTab';
 import PresentationsTab from './PresentationsTab';
 import StudentOfMonthTab from './StudentOfMonthTab';
@@ -41,10 +41,9 @@ function PeopleTabsOverride({ sub, setSub }: { sub: string; setSub: (s: 'student
       {tabs.map((t) => (
         <button
           key={t.key}
+          type="button"
           onClick={() => setSub(t.key)}
-          className={`px-3.5 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            sub === t.key ? 'border-brand-600 text-brand-ink' : 'border-transparent text-ink-muted hover:text-ink'
-          }`}
+          className={`tab-bar-item ${sub === t.key ? 'tab-bar-item-active' : ''}`}
         >
           {t.label}
         </button>
@@ -78,19 +77,7 @@ export default function PerformanceHub() {
   return (
     <div>
       <PageHeader title="Performance" subtitle="Batches, community, behaviour, points, presentations and recognition." />
-      <div className="mb-5 flex gap-1 overflow-x-auto border-b border-edge">
-        {tabs.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`shrink-0 px-3.5 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === t ? 'border-brand-600 text-brand-ink' : 'border-transparent text-ink-muted hover:text-ink'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={tabs} active={tab} onChange={setTab} />
       {tab === 'Overview' && !isPerformanceStaff && <OverviewTab onNavigate={setTab} />}
       {tab === 'Batches' && isPerformanceStaff && <BatchesList />}
       {tab === 'Community' && canSeeCommunity && <CommunityTab />}
