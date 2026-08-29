@@ -65,9 +65,9 @@ export default function TasksList() {
       />
       {!isStudent && !isParent && (
         <div className="mb-3">
-          <label className="inline-flex items-center gap-2 text-sm">
+          <label className="inline-flex w-full flex-col gap-2 text-sm sm:w-auto sm:flex-row sm:items-center">
             <span className="text-ink-muted">Filter by batch</span>
-            <select className="input w-48" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+            <select className="input w-full sm:w-48" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
               <option value="">All batches</option>
               {activeBatches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
@@ -94,7 +94,7 @@ export default function TasksList() {
           <label className="block"><span className="label">Title</span><input className="input" {...register('title', { required: true })} /></label>
           <label className="block"><span className="label">Description</span><textarea className="input" rows={2} {...register('description')} /></label>
           <label className="block"><span className="label">Instructions</span><textarea className="input" rows={2} {...register('instructions')} /></label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="form-grid-3">
             <label className="block">
               <span className="label">Batch</span>
               <select className="input" {...register('batchId', { required: true })}>
@@ -106,7 +106,7 @@ export default function TasksList() {
             <label className="block"><span className="label">Points</span><input className="input" type="number" defaultValue={10} {...register('points')} /></label>
           </div>
           <p className="text-xs text-ink-muted">The task will be assigned to all active students in the selected batch.</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="form-grid">
             <label className="block">
               <span className="label">Grace Period (hours)</span>
               <input className="input" type="number" min={0} placeholder="0" {...register('gracePeriodHours')} />

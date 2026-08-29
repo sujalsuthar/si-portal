@@ -80,7 +80,7 @@ export default function PresentationsTab() {
     <div>
       {isStaff && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <select className="input h-8 w-44 text-xs" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+          <select className="input h-8 w-full text-xs sm:w-44" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
             <option value="">All batches</option>
             {(batchItems).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -133,7 +133,7 @@ export default function PresentationsTab() {
       <Modal open={!!scoreTarget} onClose={() => setScoreTarget(null)} title="Score Presentation" wide>
         {scoreTarget && (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="form-grid-3">
               {RUBRIC_FIELDS.map(([key, label]) => (
                 <label key={key} className="block">
                   <span className="label">{label} (0–10)</span>

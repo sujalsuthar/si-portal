@@ -164,7 +164,7 @@ function SelfFeesView() {
       ) : (
         (accounts ?? []).map((a: any) => (
           <div key={a.id} className="card mb-4 p-4">
-            <div className="mb-3 grid grid-cols-3 gap-3">
+            <div className="mb-3 form-grid-3">
               <StatCard label="Total Payable" value={`Rs. ${a.totalPayable.toLocaleString('en-IN')}`} />
               <StatCard label="Outstanding" value={`Rs. ${a.outstanding.toLocaleString('en-IN')}`} tone={a.outstanding > 0 ? 'warn' : 'good'} />
               <StatCard label="Next Due" value={a.nextDue ? new Date(a.nextDue.dueDate).toLocaleDateString() : 'Paid up'} />

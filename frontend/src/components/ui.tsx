@@ -9,10 +9,10 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="page-header mb-5 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
-        <h1 className="text-xl font-semibold text-ink md:text-2xl">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-ink-muted">{subtitle}</p>}
+        <h1 className="break-words text-xl font-semibold text-ink md:text-2xl">{title}</h1>
+        {subtitle && <p className="mt-1 break-words text-sm text-ink-muted">{subtitle}</p>}
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="page-header-actions">{actions}</div>}
     </div>
   );
 }
@@ -194,43 +194,74 @@ export function Table<T>({ columns, rows, loading, emptyText = 'No records found
   emptyText?: string;
   keyFn: (row: T) => string;
 }) {
+  const labeledColumns = columns.filter((c) => c.header.trim().length > 0);
+  const unlabeledColumns = columns.filter((c) => !c.header.trim());
+
   return (
-    <div className="card table-wrap p-0">
-      <div className="table-scroll">
-        <table className="data-table">
-          <thead>
-            <tr>
-              {columns.map((c, i) => (
-                <th key={i} scope="col" className={clsx(c.className)}>
-                  {c.header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+    <>
+      <div className="card table-wrap hidden p-0 md:block">
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
               <tr>
-                <td colSpan={columns.length} className="table-empty">Loading…</td>
+                {columns.map((c, i) => (
+                  <th key={i} scope="col" className={clsx(c.className)}>
+                    {c.header}
+                  </th>
+                ))}
               </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="table-empty">{emptyText}</td>
-              </tr>
-            ) : (
-              rows.map((row, rowIndex) => (
-                <tr key={keyFn(row)}>
-                  {columns.map((c, i) => (
-                    <td key={i} className={clsx(c.className)}>
-                      {c.cell(row, rowIndex)}
-                    </td>
-                  ))}
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={columns.length} className="table-empty">Loading…</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="table-empty">{emptyText}</td>
+                </tr>
+              ) : (
+                rows.map((row, rowIndex) => (
+                  <tr key={keyFn(row)}>
+                    {columns.map((c, i) => (
+                      <td key={i} className={clsx(c.className, 'max-w-[16rem] break-words sm:max-w-none')}>
+                        {c.cell(row, rowIndex)}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      <div className="space-y-3 md:hidden">
+        {loading ? (
+          <div className="card p-6 text-center text-sm text-ink-muted">Loading…</div>
+        ) : rows.length === 0 ? (
+          <div className="card p-6 text-center text-sm text-ink-muted">{emptyText}</div>
+        ) : (
+          rows.map((row, rowIndex) => (
+            <div key={keyFn(row)} className="card space-y-2.5 p-4">
+              {unlabeledColumns.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 border-b border-edge pb-2">
+                  {unlabeledColumns.map((c, i) => (
+                    <div key={`u-${i}`} className="min-w-0">{c.cell(row, rowIndex)}</div>
+                  ))}
+                </div>
+              )}
+              {labeledColumns.map((c, i) => (
+                <div key={i} className="flex min-w-0 flex-col gap-0.5 border-b border-edge/60 pb-2 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                  <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-ink-muted">{c.header}</span>
+                  <div className="min-w-0 break-words text-sm text-ink sm:text-right">{c.cell(row, rowIndex)}</div>
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+    </>
   );
 }
 
@@ -282,20 +313,24 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={clsx('card w-full max-h-[90vh] overflow-y-auto focus:outline-none', wide ? 'max-w-2xl' : 'max-w-md')}
+        className={clsx(
+          'card flex max-h-[min(90vh,100dvh)] w-full flex-col overflow-hidden focus:outline-none sm:max-h-[90vh]',
+          wide ? 'max-w-2xl' : 'max-w-md',
+          'rounded-b-none sm:rounded-xl',
+        )}
       >
-        <div className="flex items-center justify-between border-b border-edge px-5 py-3.5">
-          <h2 id={titleId} className="text-base font-semibold text-ink">{title}</h2>
-          <button onClick={onClose} aria-label="Close dialog" className="rounded-full p-1.5 text-ink-muted hover:bg-surface-muted">✕</button>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-edge px-4 py-3.5 sm:px-5">
+          <h2 id={titleId} className="min-w-0 flex-1 break-words text-base font-semibold text-ink">{title}</h2>
+          <button type="button" onClick={onClose} aria-label="Close dialog" className="shrink-0 rounded-full p-1.5 text-ink-muted hover:bg-surface-muted">✕</button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">{children}</div>
       </div>
     </div>
   );

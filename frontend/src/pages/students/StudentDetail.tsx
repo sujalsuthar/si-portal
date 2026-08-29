@@ -145,7 +145,7 @@ export default function StudentDetail() {
 
         <Section title="3. Performance Overview">
           {composite ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               <StatCard label="Composite" value={`${composite.composite.toFixed(1)}%`} />
               <StatCard label="Attendance" value={`${composite.attendancePct.toFixed(0)}%`} />
               <StatCard label="Exams" value={`${composite.examPct.toFixed(0)}%`} />
@@ -163,9 +163,9 @@ export default function StudentDetail() {
             <div className="card divide-y divide-edge">
               {(gradeHistory ?? []).length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-muted">No published exam marks yet</p>}
               {(gradeHistory ?? []).map((g: any) => (
-                <div key={g.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                  <span className="text-ink">{g.exam?.title ?? '-'}</span>
-                  <span className="text-ink-muted">{g.exam?.examDate ? new Date(g.exam.examDate).toLocaleDateString() : '-'} · {g.marksObtained}/{g.exam?.totalMarks ?? '-'} ({g.percentage.toFixed(1)}%)</span>
+                <div key={g.id} className="flex flex-col gap-1 px-4 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <span className="min-w-0 break-words text-ink">{g.exam?.title ?? '-'}</span>
+                  <span className="shrink-0 text-ink-muted">{g.exam?.examDate ? new Date(g.exam.examDate).toLocaleDateString() : '-'} · {g.marksObtained}/{g.exam?.totalMarks ?? '-'} ({g.percentage.toFixed(1)}%)</span>
                 </div>
               ))}
             </div>
@@ -173,7 +173,7 @@ export default function StudentDetail() {
 
           <div className="mt-5">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Monthly Performance History ({monthlyPerformance?.year ?? new Date().getFullYear()})</h3>
-            <div className="card grid grid-cols-3 gap-px overflow-hidden sm:grid-cols-6 lg:grid-cols-12">
+            <div className="card grid grid-cols-2 gap-px overflow-hidden sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12">
               {(monthlyPerformance?.months ?? []).map((m: any) => (
                 <div key={m.month} className="bg-surface p-2 text-center">
                   <p className="text-[10px] uppercase text-ink-muted">{new Date(2000, m.month - 1, 1).toLocaleString(undefined, { month: 'short' })}</p>

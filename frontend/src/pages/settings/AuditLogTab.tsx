@@ -32,7 +32,7 @@ export default function AuditLogTab() {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <select className="input w-56" value={entityType} onChange={(e) => setEntityType(e.target.value)}>
+        <select className="input w-full sm:w-56" value={entityType} onChange={(e) => setEntityType(e.target.value)}>
           <option value="">All entities</option>
           {['Grade', 'Attendance', 'BatchTransfer', 'BehaviourEvent', 'Certificate', 'User', 'Student', 'Task', 'TaskSubmission', 'Exam', 'FeedPost', 'BackupRecord'].map((t) => (
             <option key={t} value={t}>{t}</option>

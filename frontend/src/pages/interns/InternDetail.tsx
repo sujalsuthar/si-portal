@@ -236,7 +236,7 @@ export default function InternDetail() {
 
       <Modal open={rateOpen} onClose={() => setRateOpen(false)} title="Rate Intern" wide>
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="form-grid-3">
             <label className="block"><span className="label">Behaviour (0–100)</span><input className="input" type="number" value={rateForm.behaviourScore} onChange={(e) => setRateForm((f) => ({ ...f, behaviourScore: e.target.value }))} /></label>
             <label className="block"><span className="label">Technical (0–100)</span><input className="input" type="number" value={rateForm.technicalScore} onChange={(e) => setRateForm((f) => ({ ...f, technicalScore: e.target.value }))} /></label>
             <label className="block"><span className="label">Project (0–100)</span><input className="input" type="number" value={rateForm.projectScore} onChange={(e) => setRateForm((f) => ({ ...f, projectScore: e.target.value }))} /></label>

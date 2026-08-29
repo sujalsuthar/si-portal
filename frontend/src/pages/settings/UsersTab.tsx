@@ -155,8 +155,8 @@ export default function UsersTab() {
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
-        <input className="input w-64" placeholder="Search by email…" value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="filter-row mb-3">
+        <input className="input w-full sm:w-64" placeholder="Search by email…" value={search} onChange={(e) => setSearch(e.target.value)} />
         {isSuperAdmin && (
           <button className="btn-secondary" onClick={openAddUser}>+ Add User</button>
         )}
@@ -173,7 +173,7 @@ export default function UsersTab() {
           {
             header: 'Actions',
             cell: (r: any) => (
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <button className="text-xs text-brand-ink hover:underline" onClick={() => toggleActive(r.id, r.isActive)}>{r.isActive ? 'Deactivate' : 'Activate'}</button>
                 <button className="text-xs text-ink-muted hover:underline" onClick={() => resetPasswordGenerated(r.id)}>Generate Temp Password</button>
                 <button className="text-xs text-ink-muted hover:underline" onClick={() => setResetTarget(r)}>Set Custom Password</button>
@@ -205,7 +205,7 @@ export default function UsersTab() {
           </label>
 
           {needsProfileFields && (
-            <div className={modalWide ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
+            <div className={modalWide ? 'form-grid' : 'space-y-3'}>
               <label className="block"><span className="label">First Name</span><input className="input" {...addUserForm.register('firstName', { required: true })} /></label>
               <label className="block"><span className="label">Last Name</span><input className="input" {...addUserForm.register('lastName', { required: true })} /></label>
             </div>
@@ -239,7 +239,7 @@ export default function UsersTab() {
           )}
 
           {selectedRole === 'PARENT' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="form-grid">
               <label className="block"><span className="label">Main Mobile</span><input className="input" {...addUserForm.register('phone')} /></label>
               <label className="block"><span className="label">Alternative Mobile</span><input className="input" {...addUserForm.register('altPhone')} /></label>
               <label className="block"><span className="label">Contact Email (optional)</span><input className="input" type="email" {...addUserForm.register('contactEmail')} /></label>

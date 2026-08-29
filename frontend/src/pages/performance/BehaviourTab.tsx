@@ -96,7 +96,7 @@ function StaffBehaviourView() {
               </button>
             ))}
           </div>
-          <select className="input h-8 w-44 text-xs" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+          <select className="input h-8 w-full text-xs sm:w-44" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
             <option value="">All batches</option>
             {(batches?.items ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -129,7 +129,7 @@ function StaffBehaviourView() {
 
       <Modal open={!!editTarget} onClose={() => setEditTarget(null)} title="Edit Behaviour Event">
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="form-grid">
             <label className="block">
               <span className="label">Category</span>
               <select className="input" value={editForm.category} onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}>
@@ -170,7 +170,7 @@ function StaffBehaviourView() {
               </div>
             )}
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="form-grid">
             <label className="block">
               <span className="label">Category</span>
               <select className="input" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>

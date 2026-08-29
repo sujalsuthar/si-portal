@@ -101,7 +101,7 @@ export default function ProfilePasswordTab() {
           <div className="space-y-3">
             <p className="text-sm text-emerald-700 dark:text-emerald-400">Two-factor authentication is enabled on your account.</p>
             <p className="text-xs text-ink-muted">Disabling it requires your password and a current code.</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="form-grid">
               <input className="input" type="password" placeholder="Current password" value={disableForm.currentPassword} onChange={(e) => setDisableForm((f) => ({ ...f, currentPassword: e.target.value }))} />
               <input className="input" placeholder="Code" value={disableForm.code} onChange={(e) => setDisableForm((f) => ({ ...f, code: e.target.value }))} />
             </div>

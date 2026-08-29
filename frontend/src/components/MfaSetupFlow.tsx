@@ -46,7 +46,7 @@ export default function MfaSetupFlow({ onEnabled }: { onEnabled: () => void }) {
       <div className="space-y-3">
         <p className="text-sm font-medium text-ink">Two-factor authentication is now active.</p>
         <p className="text-sm text-ink-muted">Save these one-time backup codes somewhere safe - each can be used once if you lose access to your authenticator app.</p>
-        <div className="grid grid-cols-2 gap-2 rounded-lg bg-surface-muted p-3 font-mono text-sm">
+        <div className="grid grid-cols-1 gap-2 rounded-lg bg-surface-muted p-3 font-mono text-sm sm:grid-cols-2">
           {backupCodes.map((c) => <span key={c}>{c}</span>)}
         </div>
         <button className="btn-primary w-full" onClick={onEnabled}>Continue</button>

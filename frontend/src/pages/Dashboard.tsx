@@ -83,11 +83,11 @@ function ActionCenterPanel({ actionCenter }: { actionCenter: Record<string, unkn
               </>
             );
             return href ? (
-              <Link key={key} to={href} className="flex items-center justify-between px-4 py-3 text-sm hover:bg-surface-muted">
+              <Link key={key} to={href} className="flex flex-col gap-1 px-4 py-3 text-sm hover:bg-surface-muted sm:flex-row sm:items-center sm:justify-between">
                 {inner}
               </Link>
             ) : (
-              <div key={key} className="flex items-center justify-between px-4 py-3 text-sm">
+              <div key={key} className="flex flex-col gap-1 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                 {inner}
               </div>
             );
@@ -123,7 +123,27 @@ function WeekCalendar({ weekSessions }: { weekSessions: any[] }) {
   return (
     <div>
       <h2 className="mb-3 text-sm font-semibold text-ink">This Week</h2>
-      <div className="grid grid-cols-7 gap-2">
+      <div className="space-y-2 md:hidden">
+        {days.map((d) => (
+          <div key={d.dayIndex} className="card overflow-hidden">
+            <div className={`px-3 py-2 text-xs font-semibold ${dayColorClasses(d.dayIndex, true)}`}>
+              {WEEKDAY_LABELS[d.dayIndex]} {d.date.getDate()}
+            </div>
+            <div className="space-y-1 p-2">
+              {d.sessions.length === 0 ? (
+                <p className="px-1 py-2 text-center text-xs text-ink-muted">-</p>
+              ) : (
+                d.sessions.map((s: any) => (
+                  <Link key={s.id} to={`/sessions/${s.id}`} className="block rounded bg-surface-muted px-2 py-1.5 text-xs text-ink hover:bg-brand-100">
+                    {s.batchName} — {s.topic}
+                  </Link>
+                ))
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden grid-cols-7 gap-2 md:grid">
         {days.map((d) => (
           <div key={d.dayIndex} className="min-w-0">
             <div className={`rounded-t-lg px-2 py-1.5 text-center text-xs font-semibold ${dayColorClasses(d.dayIndex, true)}`}>
@@ -230,8 +250,8 @@ function AdminDashboard({ data }: { data: any }) {
       <div className="card divide-y divide-edge">
         {(data?.pendingTransfers ?? []).length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-muted">No pending transfers</p>}
         {(data?.pendingTransfers ?? []).map((t: any) => (
-          <div key={t.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-            <span>{t.student.firstName} {t.student.lastName} → {t.toBatch.name}</span>
+        <div key={t.id} className="flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <span className="min-w-0 break-words">{t.student.firstName} {t.student.lastName} → {t.toBatch.name}</span>
             <div className="flex shrink-0 items-center gap-2 text-xs">
               <button type="button" className="text-emerald-700 dark:text-emerald-400 hover:underline" onClick={() => decideTransfer(t.id, 'approve')}>Approve</button>
               <button type="button" className="text-red-600 dark:text-red-400 hover:underline" onClick={() => decideTransfer(t.id, 'reject')}>Reject</button>

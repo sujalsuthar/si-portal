@@ -53,12 +53,14 @@
 
 html, body, #root {
   height: 100%;
+  overflow-x: clip;
 }
 
 body {
   @apply antialiased;
   background-color: rgb(var(--color-bg));
   color: rgb(var(--color-text));
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Respect the user's motion preference instead of forcing every transition on everyone. */
@@ -89,6 +91,32 @@ body {
   @apply border-b border-edge pb-4;
 }
 
+.page-header-actions {
+  @apply flex w-full flex-wrap items-center gap-2 sm:w-auto;
+}
+
+.form-grid {
+  @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
+}
+
+.form-grid-3 {
+  @apply grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3;
+}
+
+.filter-row {
+  @apply mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center;
+}
+
+.calendar-scroll {
+  @apply overflow-x-auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.calendar-scroll-inner {
+  @apply min-w-[640px];
+}
+
 .tab-bar {
   @apply mb-5 flex gap-1 overflow-x-auto border-b border-edge;
   scrollbar-width: thin;
@@ -116,7 +144,7 @@ body {
 }
 
 .menu-item {
-  @apply block w-full px-3 py-2 text-left text-xs text-ink transition-colors;
+  @apply block w-full px-3 py-2.5 text-left text-xs text-ink transition-colors;
   @apply hover:bg-surface-muted focus-visible:outline-none focus-visible:bg-surface-muted;
 }
 
@@ -125,11 +153,12 @@ body {
 }
 
 .table-wrap {
-  @apply overflow-visible;
+  @apply overflow-hidden;
 }
 
 .table-scroll {
-  @apply overflow-x-auto;
+  @apply max-w-full overflow-x-auto;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
 
@@ -147,6 +176,23 @@ body {
 
 .data-table td {
   @apply px-4 py-3 align-middle text-ink;
+}
+
+@media (max-width: 767px) {
+  .data-table th,
+  .data-table td {
+    @apply px-3 py-2.5;
+  }
+
+  .data-table td:first-child,
+  .data-table th:first-child {
+    @apply pl-3;
+  }
+
+  .data-table td:last-child,
+  .data-table th:last-child {
+    @apply pr-3;
+  }
 }
 
 .data-table tbody tr {

@@ -125,6 +125,8 @@ export default function CalendarPage() {
         <Spinner />
       ) : (
         <div className="card overflow-hidden">
+          <div className="calendar-scroll">
+            <div className="calendar-scroll-inner">
           <div className="grid grid-cols-7 divide-x divide-edge border-b border-edge bg-surface-muted text-xs font-semibold uppercase tracking-wide text-ink-muted">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
               <div key={d} className="px-2 py-1.5">{d}</div>
@@ -162,13 +164,15 @@ export default function CalendarPage() {
               </div>
             ))}
           </div>
+            </div>
+          </div>
         </div>
       )}
 
       <Modal open={!!selectedDate} onClose={() => setSelectedDate(null)} title={editEvent ? 'Edit Event' : `New Event - ${selectedDate}`}>
         <div className="space-y-3">
           <label className="block"><span className="label">Title</span><input className="input" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} /></label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="form-grid">
             <label className="block"><span className="label">Start Time</span><input className="input" type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} /></label>
             <label className="block"><span className="label">End Time (optional)</span><input className="input" type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} /></label>
           </div>

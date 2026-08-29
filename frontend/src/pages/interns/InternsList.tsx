@@ -130,7 +130,7 @@ function StudentDevelopmentView({ studentId }: { studentId?: string }) {
   return (
     <div>
       <PageHeader title="My Internship Dashboard" subtitle="Ratings and task information for your internship." />
-      <div className="mb-5 grid grid-cols-2 gap-3">
+      <div className="mb-5 form-grid">
         <StatCard label="Overall Band" value={data.band} tone={data.band === 'Below Expectations' ? 'bad' : data.band === 'Meeting Expectations' ? 'default' : 'good'} />
         <StatCard label="Work Status" value={data.frozen ? 'Paused - Review Pending' : 'Active'} tone={data.frozen ? 'bad' : 'good'} />
       </div>

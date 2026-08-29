@@ -40,7 +40,7 @@ export default function ParentsList() {
         subtitle="Manage parent accounts and their linked students."
         actions={
           <>
-            <input className="input w-56" placeholder="Search by parent or student name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="input w-full sm:w-56" placeholder="Search by parent or student name…" value={search} onChange={(e) => setSearch(e.target.value)} />
             {canManage && <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Add Parent</button>}
           </>
         }
@@ -58,7 +58,7 @@ export default function ParentsList() {
       />
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Parent" wide>
-        <form onSubmit={handleSubmit(onCreate)} className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit(onCreate)} className="form-grid">
           <label className="block"><span className="label">First Name</span><input className="input" {...register('firstName', { required: true })} /></label>
           <label className="block"><span className="label">Last Name</span><input className="input" {...register('lastName', { required: true })} /></label>
           <label className="block"><span className="label">Login Email (Username)</span><input className="input" type="email" {...register('email', { required: true })} /></label>
@@ -67,9 +67,9 @@ export default function ParentsList() {
           <label className="block"><span className="label">Alternative Mobile</span><input className="input" {...register('altPhone')} /></label>
           <label className="block"><span className="label">Occupation</span><input className="input" {...register('occupation')} /></label>
           <div />
-          <label className="block col-span-2"><span className="label">Current Address</span><input className="input" {...register('currentAddress')} /></label>
-          <label className="block col-span-2"><span className="label">Permanent Address</span><input className="input" {...register('permanentAddress')} /></label>
-          <div className="col-span-2 mt-2 flex justify-end gap-2">
+          <label className="block sm:col-span-2"><span className="label">Current Address</span><input className="input" {...register('currentAddress')} /></label>
+          <label className="block sm:col-span-2"><span className="label">Permanent Address</span><input className="input" {...register('permanentAddress')} /></label>
+          <div className="col-span-1 mt-2 flex justify-end gap-2 sm:col-span-2">
             <button type="button" className="btn-secondary" onClick={() => setCreateOpen(false)}>Cancel</button>
             <button type="submit" className="btn-primary">Create</button>
           </div>
@@ -120,7 +120,7 @@ function ParentDetailView({ parentId }: { parentId: string }) {
     <div className="space-y-5">
       <div>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Login Details</h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="form-grid text-sm">
           <Row label="Name" value={`${data.firstName} ${data.lastName}`} />
           <Row label="ID" value={data.id} />
           <Row label="Username (Email)" value={data.user.email} />
@@ -132,7 +132,7 @@ function ParentDetailView({ parentId }: { parentId: string }) {
           {canEdit && !editing && <button className="text-xs text-brand-ink hover:underline" onClick={startEdit}>Edit</button>}
         </div>
         {editing ? (
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="form-grid text-sm">
             <label className="block"><span className="label">First Name</span><input className="input" value={form.firstName} onChange={(e) => setForm((f: any) => ({ ...f, firstName: e.target.value }))} /></label>
             <label className="block"><span className="label">Last Name</span><input className="input" value={form.lastName} onChange={(e) => setForm((f: any) => ({ ...f, lastName: e.target.value }))} /></label>
             <label className="block"><span className="label">Contact Email</span><input className="input" value={form.contactEmail} onChange={(e) => setForm((f: any) => ({ ...f, contactEmail: e.target.value }))} /></label>
@@ -147,7 +147,7 @@ function ParentDetailView({ parentId }: { parentId: string }) {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="form-grid text-sm">
             <Row label="Contact Email" value={data.contactEmail ?? '-'} />
             <Row label="Main Mobile" value={data.phone ?? '-'} />
             <Row label="Alternative Mobile" value={data.altPhone ?? '-'} />

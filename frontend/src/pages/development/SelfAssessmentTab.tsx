@@ -120,7 +120,7 @@ export default function SelfAssessmentTab() {
         </div>
       )}
       {compare && (
-        <div className="mb-5 grid grid-cols-3 gap-3">
+        <div className="mb-5 form-grid-3">
           <StatCard label="Self-Confidence" value={`${compare.averageSelfConfidencePct}%`} />
           <StatCard label="Actual Performance" value={compare.averageActualPerformancePct != null ? `${compare.averageActualPerformancePct}%` : '-'} />
           <StatCard label="Gap" value={compare.gap != null ? `${compare.gap > 0 ? '+' : ''}${compare.gap}%` : '-'} tone={compare.gap > 15 ? 'warn' : 'default'} />

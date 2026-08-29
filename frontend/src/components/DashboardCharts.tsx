@@ -43,8 +43,8 @@ function WidgetCard({ meta, widgetData }: { meta: WidgetMeta; widgetData?: Widge
       {data.length === 0 ? (
         <p className="flex h-56 items-center justify-center text-center text-xs text-ink-muted">Not enough data yet</p>
       ) : (
-        <div style={{ height: 240 }}>
-          <ResponsiveContainer width="100%" height="100%">
+        <div style={{ height: 240 }} className="min-w-0 w-full">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             {meta.chartType === 'pie' ? (
               <PieChart>
                 <Pie data={data} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={80} label>

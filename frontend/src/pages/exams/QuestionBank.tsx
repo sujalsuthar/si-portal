@@ -69,7 +69,7 @@ export default function QuestionBank() {
         subtitle="Build questions on the left, then assemble them into an exam paper on the right."
         actions={
           <>
-            <input className="input w-56" placeholder="Search questions…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="input w-full sm:w-56" placeholder="Search questions…" value={search} onChange={(e) => setSearch(e.target.value)} />
             <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Add Question</button>
           </>
         }
@@ -112,7 +112,7 @@ export default function QuestionBank() {
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Question" wide>
         <form onSubmit={handleSubmit(onCreate)} className="space-y-3">
           <label className="block"><span className="label">Question Text</span><textarea className="input" rows={2} {...register('questionText', { required: true })} /></label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="form-grid-3">
             <label className="block"><span className="label">Topic</span><input className="input" {...register('topic')} /></label>
             <label className="block">
               <span className="label">Type</span>
@@ -206,7 +206,7 @@ function BuildPaperPanel({
   }
 
   return (
-    <div className="card sticky top-4 space-y-3 p-4">
+    <div className="card static space-y-3 p-4 lg:sticky lg:top-4">
       <h2 className="text-sm font-semibold text-ink">Paper Creation</h2>
       <p className="text-xs text-ink-muted">Save reusable papers here anytime. When scheduling an exam, attach a saved paper from the exam detail page.</p>
 

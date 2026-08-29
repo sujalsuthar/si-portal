@@ -21,8 +21,8 @@ function PreferencesPanel() {
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-ink marker:content-none [&::-webkit-details-marker]:hidden">
         Notification preferences
       </summary>
-      <div className="divide-y divide-edge border-t border-edge">
-        <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-4 py-2 text-xs font-medium text-ink-muted">
+      <div className="table-scroll divide-y divide-edge border-t border-edge">
+        <div className="grid min-w-[20rem] grid-cols-[1fr_auto_auto] gap-2 px-4 py-2 text-xs font-medium text-ink-muted">
           <span>Category</span>
           <span className="w-16 text-center">In-app</span>
           <span className="w-16 text-center">Email</span>
@@ -73,9 +73,9 @@ export default function NotificationsPage() {
         <div className="card divide-y divide-edge">
           {data.items.map((n: any) => (
             <button key={n.id} onClick={() => openNotification(n)} className={`block w-full px-4 py-3 text-left text-sm hover:bg-surface-muted ${n.isRead ? '' : 'bg-brand-600/10'}`}>
-              <div className="flex items-center justify-between">
-                <p className="font-medium text-ink">{n.title}</p>
-                <span className="text-xs text-ink-muted">{new Date(n.createdAt).toLocaleString()}</span>
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p className="min-w-0 break-words font-medium text-ink">{n.title}</p>
+                <span className="shrink-0 text-xs text-ink-muted">{new Date(n.createdAt).toLocaleString()}</span>
               </div>
               <p className="mt-0.5 text-ink-muted">{n.message}</p>
             </button>

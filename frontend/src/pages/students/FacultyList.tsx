@@ -38,7 +38,7 @@ export default function FacultyList() {
       <PageHeader
         title="Team"
         subtitle="Instructor and mentor profiles and their mentored students."
-        actions={<input className="input w-56" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} />}
+        actions={<input className="input w-full sm:w-56" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} />}
       />
       <Table
         loading={isLoading}
@@ -106,7 +106,7 @@ function FacultyDetailView({ facultyId }: { facultyId: string }) {
     <div className="space-y-5">
       <div>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Login Details</h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="form-grid text-sm">
           <Row label="Name" value={`${data.firstName} ${data.lastName}`} />
           <Row label="Employee Code" value={data.employeeCode} />
           <Row label="Username (Email)" value={data.user.email} />
@@ -116,7 +116,7 @@ function FacultyDetailView({ facultyId }: { facultyId: string }) {
       </div>
       <div>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Team Member Information</h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="form-grid text-sm">
           <Row label="Phone" value={data.phone ?? '-'} />
           <Row label="Department" value={data.department ?? '-'} />
           <Row label="Designation" value={data.designation ?? '-'} />

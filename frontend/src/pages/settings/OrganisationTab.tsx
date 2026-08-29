@@ -130,7 +130,7 @@ export default function OrganisationTab() {
       {section === 'Notification Templates' && (
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="form-grid">
               <select className="input" value={templateForm.category} onChange={(e) => setTemplateForm((f) => ({ ...f, category: e.target.value }))}>
                 {['ATTENDANCE', 'EXAM', 'TASK', 'GRADE', 'PRESENTATION', 'CERTIFICATION', 'CERTIFICATE', 'BATCH_TRANSFER', 'BEHAVIOUR', 'GENERAL'].map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -156,8 +156,8 @@ export default function OrganisationTab() {
 
       {section === 'Breach Register' && (
         <div>
-          <div className="mb-3 grid max-w-2xl grid-cols-4 gap-2">
-            <input className="input col-span-2" placeholder="Title" value={breachForm.title} onChange={(e) => setBreachForm((f) => ({ ...f, title: e.target.value }))} />
+          <div className="mb-3 form-grid-3 max-w-2xl">
+            <input className="input sm:col-span-2" placeholder="Title" value={breachForm.title} onChange={(e) => setBreachForm((f) => ({ ...f, title: e.target.value }))} />
             <input className="input" type="number" placeholder="Affected" value={breachForm.affectedCount} onChange={(e) => setBreachForm((f) => ({ ...f, affectedCount: e.target.value }))} />
             <input className="input" type="date" value={breachForm.detectedAt} onChange={(e) => setBreachForm((f) => ({ ...f, detectedAt: e.target.value }))} />
           </div>
