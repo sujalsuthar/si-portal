@@ -29,7 +29,6 @@ const NAV: NavItem[] = [
   { to: '/certificates', label: 'Certificates', roles: CERTIFICATE_ROLES },
   { to: '/action-centre', label: 'Action Centre', roles: ['FACULTY', 'STUDENT', 'PARENT', 'MANAGEMENT', 'ACCOUNTS'] },
   { to: '/reports', label: 'Reports', roles: REPORTS_ROLES },
-  { to: '/notifications', label: 'Notifications' },
   { to: '/calendar', label: 'Calendar', roles: NOT_PARENT },
   { to: '/account-management', label: 'Account Management', roles: ['SUPER_ADMIN'] },
   { to: '/backup', label: 'Backup', roles: ADMIN_LIKE },

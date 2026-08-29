@@ -43,14 +43,8 @@ function PreferencesPanel() {
 }
 
 export default function NotificationsPage() {
-  const queryClient = useQueryClient();
   const [showPreferences, setShowPreferences] = useState(false);
   const { data, isLoading } = useQuery({ queryKey: ['notifications', 'page'], queryFn: async () => (await api.get('/notifications', { params: { pageSize: 50 } })).data });
-
-  async function markRead(id: string) {
-    await api.patch(`/notifications/${id}/read`);
-    queryClient.invalidateQueries({ queryKey: ['notifications'] });
-  }
 
   return (
     <div>
@@ -73,11 +67,6 @@ export default function NotificationsPage() {
                 <span className="shrink-0 text-xs text-ink-muted">{new Date(n.createdAt).toLocaleString()}</span>
               </div>
               <p className="mt-0.5 text-ink-muted">{n.message}</p>
-              {!n.isRead && (
-                <button type="button" className="mt-2 text-xs text-brand-ink hover:underline" onClick={() => markRead(n.id)}>
-                  Mark as read
-                </button>
-              )}
             </div>
           ))}
         </div>

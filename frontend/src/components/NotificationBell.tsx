@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
 interface NotificationItem {
@@ -9,12 +8,10 @@ interface NotificationItem {
   message: string;
   isRead: boolean;
   createdAt: string;
-  link?: string | null;
 }
 
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
-  const queryClient = useQueryClient();
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['notifications', 'bell'],
@@ -39,16 +36,6 @@ export default function NotificationBell() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open]);
 
-  async function markAllRead() {
-    await api.post('/notifications/read-all');
-    queryClient.invalidateQueries({ queryKey: ['notifications'] });
-  }
-
-  async function markRead(id: string) {
-    await api.patch(`/notifications/${id}/read`);
-    queryClient.invalidateQueries({ queryKey: ['notifications'] });
-  }
-
   return (
     <div className="relative">
       <button
@@ -68,15 +55,10 @@ export default function NotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div className="card absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] shadow-xl" role="menu">
+          <div className="card absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] shadow-xl" role="dialog" aria-label="Notifications">
             <div className="flex items-center justify-between border-b border-edge px-4 py-2.5">
               <span className="text-sm font-semibold text-ink">Notifications</span>
-              <div className="flex items-center gap-2">
-                {(isLoading || isFetching) && <span className="text-xs text-ink-muted">Updating…</span>}
-                {!!data?.unreadCount && (
-                  <button type="button" onClick={markAllRead} className="text-xs text-brand-ink hover:underline">Mark all read</button>
-                )}
-              </div>
+              {(isLoading || isFetching) && <span className="text-xs text-ink-muted">Updating…</span>}
             </div>
             <div className="max-h-80 overflow-y-auto">
               {isLoading ? (
@@ -85,28 +67,16 @@ export default function NotificationBell() {
                 data.items.map((n) => (
                   <div
                     key={n.id}
-                    className={`block w-full border-b border-edge px-4 py-2.5 text-left text-sm ${n.isRead ? '' : 'bg-brand-600/10'}`}
+                    className={`border-b border-edge px-4 py-2.5 text-left text-sm ${n.isRead ? '' : 'bg-brand-600/10'}`}
                   >
                     <p className="font-medium text-ink">{n.title}</p>
                     <p className="mt-0.5 text-xs text-ink-muted line-clamp-2">{n.message}</p>
-                    <div className="mt-1 flex items-center justify-between gap-2">
-                      <p className="text-[10px] text-ink-muted">{new Date(n.createdAt).toLocaleString()}</p>
-                      {!n.isRead && (
-                        <button type="button" onClick={() => markRead(n.id)} className="text-[10px] text-brand-ink hover:underline">
-                          Mark read
-                        </button>
-                      )}
-                    </div>
+                    <p className="mt-1 text-[10px] text-ink-muted">{new Date(n.createdAt).toLocaleString()}</p>
                   </div>
                 ))
               ) : (
                 <p className="px-4 py-6 text-center text-sm text-ink-muted">No notifications yet</p>
               )}
-            </div>
-            <div className="border-t border-edge px-4 py-2 text-center">
-              <Link to="/notifications" className="text-xs text-brand-ink hover:underline" onClick={() => setOpen(false)}>
-                View all notifications →
-              </Link>
             </div>
           </div>
         </>
