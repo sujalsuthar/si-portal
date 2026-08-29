@@ -71,6 +71,19 @@ parentsRouter.get(
           OR: [
             { firstName: { contains: search, mode: 'insensitive' as const } },
             { lastName: { contains: search, mode: 'insensitive' as const } },
+            {
+              students: {
+                some: {
+                  student: {
+                    OR: [
+                      { firstName: { contains: search, mode: 'insensitive' as const } },
+                      { lastName: { contains: search, mode: 'insensitive' as const } },
+                      { studentCode: { contains: search, mode: 'insensitive' as const } },
+                    ],
+                  },
+                },
+              },
+            },
           ],
         }
       : {};

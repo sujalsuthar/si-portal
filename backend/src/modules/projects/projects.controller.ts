@@ -70,6 +70,7 @@ projectsRouter.post(
     }
 
     const project = await prisma.project.create({ data: { ...data, createdById: req.auth!.userId } });
+    await prisma.projectGroup.create({ data: { projectId: project.id, sequence: 1, name: project.name } });
     res.status(201).json(project);
   }),
 );
@@ -105,6 +106,7 @@ projectsRouter.post(
     const project = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (!project) throw ApiError.notFound('Project not found');
     const count = await prisma.projectGroup.count({ where: { projectId: req.params.id } });
+    if (count >= 1) throw ApiError.badRequest('Each batch project allows only one group of up to 4 students');
     const group = await prisma.projectGroup.create({
       data: { projectId: req.params.id, sequence: count + 1, repoLink, name: name ?? project.name },
     });
@@ -200,6 +202,11 @@ projectsRouter.post(
 
     const existingMembership = await prisma.projectMember.findFirst({ where: { studentId, projectId: req.params.id } });
     if (existingMembership) throw ApiError.conflict('This student already belongs to a group in this project');
+
+    const memberCount = await prisma.projectMember.count({ where: { groupId: req.params.groupId } });
+    if (memberCount >= project.groupSize) {
+      throw ApiError.badRequest(`A project group can have at most ${project.groupSize} students`);
+    }
 
     // The @@unique([projectId, studentId]) constraint is the real guarantee against a race
     // between two concurrent adds; this check above is just a fast, friendly early rejection.

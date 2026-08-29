@@ -20,44 +20,41 @@ export default function TasksList() {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editTask, setEditTask] = useState<any>(null);
+  const [batchFilter, setBatchFilter] = useState('');
   const canCreate = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FACULTY'].includes(user.role);
   const isStudent = user?.role === 'STUDENT';
   const isParent = user?.role === 'PARENT';
-  const [assignMode, setAssignMode] = useState<'BATCH' | 'INTERNS'>('BATCH');
-  const [selectedBatchId, setSelectedBatchId] = useState('');
-  const [selectedInternIds, setSelectedInternIds] = useState<string[]>([]);
 
-  const { data, isLoading } = useQuery({ queryKey: ['tasks'], queryFn: async () => (await api.get('/tasks', { params: { pageSize: 50 } })).data });
-  const { data: batches } = useQuery({ queryKey: ['batches', 'all'], queryFn: async () => (await api.get('/batches', { params: { pageSize: 100 } })).data, enabled: createOpen });
-  const { data: batchInterns } = useQuery({
-    queryKey: ['students', 'interns', selectedBatchId],
-    queryFn: async () => (await api.get('/students', { params: { batchId: selectedBatchId, studentType: 'INTERN', pageSize: 100 } })).data,
-    enabled: createOpen && assignMode === 'INTERNS' && !!selectedBatchId,
+  const { data, isLoading } = useQuery({
+    queryKey: ['tasks', batchFilter],
+    queryFn: async () => (await api.get('/tasks', { params: { pageSize: 50, ...(batchFilter ? { batchId: batchFilter } : {}) } })).data,
+  });
+  const { data: batches } = useQuery({
+    queryKey: ['batches', 'active'],
+    queryFn: async () => (await api.get('/batches', { params: { pageSize: 100, status: 'ACTIVE' } })).data,
+    enabled: createOpen || !isStudent,
   });
 
   const { register, handleSubmit, reset } = useForm();
 
   async function onCreate(values: any) {
-    if (assignMode === 'INTERNS' && selectedInternIds.length === 0) return toast.error('Select at least one intern');
     try {
       await api.post('/tasks', {
         ...values,
         points: Number(values.points || 0),
         gracePeriodHours: values.gracePeriodHours ? Number(values.gracePeriodHours) : undefined,
         lateDeductionRate: values.lateDeductionRate ? Number(values.lateDeductionRate) : 0,
-        ...(assignMode === 'INTERNS' ? { studentIds: selectedInternIds } : {}),
       });
       toast.success('Task assigned');
       setCreateOpen(false);
       reset();
-      setAssignMode('BATCH');
-      setSelectedBatchId('');
-      setSelectedInternIds([]);
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
     }
   }
+
+  const activeBatches = batches?.items ?? [];
 
   return (
     <div>
@@ -66,17 +63,26 @@ export default function TasksList() {
         subtitle={isStudent ? 'Track and submit your assigned tasks.' : 'Assign tasks, review submissions, and evaluate.'}
         actions={canCreate && <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Assign Task</button>}
       />
+      {!isStudent && !isParent && (
+        <div className="mb-3">
+          <label className="inline-flex items-center gap-2 text-sm">
+            <span className="text-ink-muted">Filter by batch</span>
+            <select className="input w-48" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+              <option value="">All batches</option>
+              {activeBatches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
       <Table
         loading={isLoading}
         rows={data?.items ?? []}
         keyFn={(r: any) => r.id}
         columns={[
           { header: 'Task', cell: (r: any) => <Link className="font-medium text-brand-ink hover:underline" to={`/tasks/${r.id}`}>{r.title}</Link> },
-          // Spec: Student/Parent task tables omit the Batch column entirely.
           ...(!isStudent && !isParent ? [{ header: 'Batch', cell: (r: any) => r.batch?.name ?? '-' }] : []),
           { header: 'Due Date', cell: (r: any) => new Date(r.dueDate).toDateString() },
           { header: 'Points', cell: (r: any) => r.points },
-          // Spec: Student/Parent tables show a Status column (Completed/Not Submitted/Late) instead of Submissions.
           ...(isStudent || isParent
             ? [{ header: 'Status', cell: (r: any) => <Badge tone={r.status === 'Completed' ? 'green' : r.status === 'Late' ? 'red' : 'slate'}>{r.status}</Badge> }]
             : [{ header: 'Submissions', cell: (r: any) => `${r._count.submissions}/${r._count.assignments}` }]),
@@ -91,50 +97,15 @@ export default function TasksList() {
           <div className="grid grid-cols-3 gap-3">
             <label className="block">
               <span className="label">Batch</span>
-              <select
-                className="input"
-                {...register('batchId', { required: true })}
-                onChange={(e) => setSelectedBatchId(e.target.value)}
-              >
-                <option value="">Select…</option>
-                {batches?.items?.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              <select className="input" {...register('batchId', { required: true })}>
+                <option value="">Select active batch…</option>
+                {activeBatches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </label>
             <label className="block"><span className="label">Due Date</span><input className="input" type="date" {...register('dueDate', { required: true })} /></label>
             <label className="block"><span className="label">Points</span><input className="input" type="number" defaultValue={10} {...register('points')} /></label>
           </div>
-          <label className="block">
-            <span className="label">Assign To</span>
-            <select className="input" value={assignMode} onChange={(e) => { setAssignMode(e.target.value as 'BATCH' | 'INTERNS'); setSelectedInternIds([]); }}>
-              <option value="BATCH">Whole Batch</option>
-              <option value="INTERNS">Interns Only</option>
-            </select>
-          </label>
-          {assignMode === 'INTERNS' && (
-            <div>
-              <span className="label">Select Interns</span>
-              {!selectedBatchId ? (
-                <p className="text-xs text-ink-muted">Select a batch first</p>
-              ) : !batchInterns?.items?.length ? (
-                <p className="text-xs text-ink-muted">No interns in this batch</p>
-              ) : (
-                <div className="mt-1 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-edge p-2">
-                  {batchInterns.items.map((s: any) => (
-                    <label key={s.id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selectedInternIds.includes(s.id)}
-                        onChange={(e) =>
-                          setSelectedInternIds((ids) => (e.target.checked ? [...ids, s.id] : ids.filter((id) => id !== s.id)))
-                        }
-                      />
-                      {s.firstName} {s.lastName} ({s.studentCode})
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <p className="text-xs text-ink-muted">The task will be assigned to all active students in the selected batch.</p>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className="label">Grace Period (hours)</span>

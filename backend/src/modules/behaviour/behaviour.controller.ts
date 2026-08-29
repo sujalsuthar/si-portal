@@ -26,6 +26,7 @@ behaviourRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const studentId = req.query.studentId as string | undefined;
+    const batchId = req.query.batchId as string | undefined;
     const category = req.query.category as BehaviourCategory | undefined;
     const type = req.query.type as PointType | undefined;
     // Students vs Interns behaviour split (4.0 issue log): null internStatus = student, otherwise intern.
@@ -45,13 +46,25 @@ behaviourRouter.get(
       studentWhere.currentBatchId = { in: await getFacultyBatchIds(req.auth!.facultyId!) };
     }
     if (studentType) studentWhere.internStatus = studentType === 'INTERN' ? { not: null } : null;
+    if (batchId) studentWhere.currentBatchId = batchId;
     if (Object.keys(studentWhere).length > 0) where.student = studentWhere;
 
     const events = await prisma.behaviourEvent.findMany({
       where,
       orderBy: { eventDate: 'desc' },
       take: 200,
-      include: { student: { select: { id: true, firstName: true, lastName: true, studentCode: true, internStatus: true } } },
+      include: {
+        student: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            studentCode: true,
+            internStatus: true,
+            currentBatch: { select: { id: true, name: true } },
+          },
+        },
+      },
     });
     res.json(events);
   }),

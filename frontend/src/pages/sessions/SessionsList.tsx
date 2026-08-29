@@ -89,8 +89,8 @@ export default function SessionsList() {
           </label>
           <label className="block">
             <span className="label">Trainer</span>
-            <select className="input" {...register('facultyId')}>
-              <option value="">Myself</option>
+            <select className="input" {...register('facultyId', { required: true })}>
+              <option value="">Select team member…</option>
               {faculty?.items?.map((f: any) => <option key={f.id} value={f.id}>{f.firstName} {f.lastName}</option>)}
             </select>
           </label>
@@ -220,8 +220,8 @@ function FullWeekModal({ batches, faculty, onClose, onCreated }: { batches: any[
 
   async function onSubmit() {
     const active = days.map((d, i) => ({ ...d, i })).filter((d) => d.enabled);
-    if (!batchId || active.length === 0) {
-      toast.error('Select a batch and at least one day');
+    if (!batchId || !facultyId || active.length === 0) {
+      toast.error('Select a batch, team member, and at least one day');
       return;
     }
     const base = new Date(weekStart + 'T00:00:00');
@@ -232,7 +232,7 @@ function FullWeekModal({ batches, faculty, onClose, onCreated }: { batches: any[
       date.setHours(h, m, 0, 0);
       return {
         batchId,
-        facultyId: facultyId || undefined,
+        facultyId,
         topic: topic || `${WEEKDAYS[i]} Session`,
         description: description || `${WEEKDAYS[i]} session`,
         sessionType,
@@ -266,8 +266,8 @@ function FullWeekModal({ batches, faculty, onClose, onCreated }: { batches: any[
           </label>
           <label className="block">
             <span className="label">Trainer</span>
-            <select className="input" value={facultyId} onChange={(e) => setFacultyId(e.target.value)}>
-              <option value="">Myself</option>
+            <select className="input" value={facultyId} onChange={(e) => setFacultyId(e.target.value)} required>
+              <option value="">Select team member…</option>
               {faculty.map((f: any) => <option key={f.id} value={f.id}>{f.firstName} {f.lastName}</option>)}
             </select>
           </label>

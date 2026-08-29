@@ -19,8 +19,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function applySession(data: { accessToken: string; refreshToken: string; user: AuthUser }) {
-  localStorage.setItem('samp_auth', JSON.stringify({ accessToken: data.accessToken, refreshToken: data.refreshToken }));
+function applySession(data: { accessToken: string; refreshToken: string; sessionId?: string; user: AuthUser }) {
+  localStorage.setItem('samp_auth', JSON.stringify({ accessToken: data.accessToken, refreshToken: data.refreshToken, sessionId: data.sessionId }));
   return data.user;
 }
 

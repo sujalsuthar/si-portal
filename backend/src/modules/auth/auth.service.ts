@@ -19,7 +19,7 @@ async function issueTokenPair(userId: string, email: string, role: RoleName, fam
   const accessToken = signAccessToken({ sub: userId, email, role });
   const refreshToken = signRefreshToken(userId);
 
-  await prisma.refreshToken.create({
+  const session = await prisma.refreshToken.create({
     data: {
       userId,
       tokenHash: hashToken(refreshToken),
@@ -28,7 +28,7 @@ async function issueTokenPair(userId: string, email: string, role: RoleName, fam
     },
   });
 
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, sessionId: session.id };
 }
 
 function toUserPayload(user: {

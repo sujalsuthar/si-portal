@@ -25,6 +25,21 @@ const examSchema = z.object({
   passMarks: z.number().int().min(0).optional(),
 });
 
+/** Hidden exam that stores reusable paper templates — excluded from normal exam listings. */
+const PAPER_LIBRARY_TITLE = '__PAPER_LIBRARY__';
+
+async function getOrCreatePaperLibraryExam(createdById: string) {
+  let exam = await prisma.exam.findFirst({ where: { title: PAPER_LIBRARY_TITLE } });
+  if (!exam) {
+    const batch = await prisma.batch.findFirst({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } });
+    if (!batch) throw ApiError.badRequest('No active batch exists to initialize the paper library');
+    exam = await prisma.exam.create({
+      data: { title: PAPER_LIBRARY_TITLE, batchId: batch.id, subject: 'Paper Library', createdById, status: ExamStatus.DRAFT },
+    });
+  }
+  return exam;
+}
+
 async function recalcTotalMarks(examId: string) {
   const papers = await prisma.paper.findMany({ where: { examId }, include: { examQuestions: true } });
   for (const paper of papers) {
@@ -42,7 +57,11 @@ examsRouter.get(
     const pagination = getPagination(req, 25);
     const batchId = req.query.batchId as string | undefined;
     const status = req.query.status as ExamStatus | undefined;
-    const where: Record<string, unknown> = { ...(batchId ? { batchId } : {}), ...(status ? { status } : {}) };
+    const where: Record<string, unknown> = {
+      title: { not: PAPER_LIBRARY_TITLE },
+      ...(batchId ? { batchId } : {}),
+      ...(status ? { status } : {}),
+    };
 
     if (!batchId && req.auth!.role === RoleName.STUDENT) {
       const student = await prisma.student.findUnique({ where: { id: req.auth!.studentId! }, select: { currentBatchId: true } });
@@ -84,6 +103,48 @@ const QUESTION_PUBLIC_FIELDS = {
   createdAt: true,
 } as const;
 
+// ---------------------------------------------------------------------------
+// Paper library — reusable papers created independently of scheduled exams.
+// Must be registered before /:id so "papers" is not captured as an exam id.
+// ---------------------------------------------------------------------------
+
+examsRouter.get(
+  '/papers/library',
+  authorize(...ROLE_GROUPS.STAFF),
+  asyncHandler(async (req, res) => {
+    const exam = await getOrCreatePaperLibraryExam(req.auth!.userId);
+    const papers = await prisma.paper.findMany({
+      where: { examId: exam.id },
+      orderBy: { sequence: 'asc' },
+      include: { _count: { select: { examQuestions: true } } },
+    });
+    res.json(papers);
+  }),
+);
+
+const libraryPaperSchema = z.object({ name: z.string().min(1), questionIds: z.array(z.string()).min(1) });
+
+examsRouter.post(
+  '/papers/library',
+  authorize(...ROLE_GROUPS.STAFF),
+  asyncHandler(async (req, res) => {
+    const { name, questionIds } = libraryPaperSchema.parse(req.body);
+    const exam = await getOrCreatePaperLibraryExam(req.auth!.userId);
+    const count = await prisma.paper.count({ where: { examId: exam.id } });
+    const paper = await prisma.paper.create({ data: { examId: exam.id, name, sequence: count + 1 } });
+    for (const [index, questionId] of questionIds.entries()) {
+      const question = await prisma.question.findUnique({ where: { id: questionId } });
+      if (!question) throw ApiError.notFound(`Question ${questionId} not found`);
+      await prisma.examQuestion.create({
+        data: { paperId: paper.id, questionId, sequence: index + 1, marks: question.marks },
+      });
+      await prisma.question.update({ where: { id: questionId }, data: { usageCount: { increment: 1 } } });
+    }
+    await recalcTotalMarks(exam.id);
+    res.status(201).json(paper);
+  }),
+);
+
 examsRouter.get(
   '/:id',
   asyncHandler(async (req, res) => {
@@ -110,6 +171,37 @@ examsRouter.get(
     }
 
     res.json(exam);
+  }),
+);
+
+const attachLibrarySchema = z.object({ libraryPaperId: z.string(), name: z.string().optional() });
+
+examsRouter.post(
+  '/:id/papers/from-library',
+  authorize(...ROLE_GROUPS.STAFF),
+  asyncHandler(async (req, res) => {
+    const { libraryPaperId, name } = attachLibrarySchema.parse(req.body);
+    const [targetExam, sourcePaper] = await Promise.all([
+      prisma.exam.findUnique({ where: { id: req.params.id } }),
+      prisma.paper.findUnique({
+        where: { id: libraryPaperId },
+        include: { examQuestions: { orderBy: { sequence: 'asc' } } },
+      }),
+    ]);
+    if (!targetExam) throw ApiError.notFound('Exam not found');
+    if (!sourcePaper) throw ApiError.notFound('Library paper not found');
+
+    const count = await prisma.paper.count({ where: { examId: targetExam.id } });
+    const paper = await prisma.paper.create({
+      data: { examId: targetExam.id, name: name ?? sourcePaper.name, sequence: count + 1 },
+    });
+    for (const eq of sourcePaper.examQuestions) {
+      await prisma.examQuestion.create({
+        data: { paperId: paper.id, questionId: eq.questionId, sequence: eq.sequence, marks: eq.marks },
+      });
+    }
+    const totalMarks = await recalcTotalMarks(targetExam.id);
+    res.status(201).json({ paper, totalMarks });
   }),
 );
 

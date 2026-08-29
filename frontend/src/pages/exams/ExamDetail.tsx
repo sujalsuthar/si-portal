@@ -12,12 +12,19 @@ export default function ExamDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [addQuestionPaperId, setAddQuestionPaperId] = useState<string | null>(null);
+  const [addLibraryOpen, setAddLibraryOpen] = useState(false);
+  const [libraryPaperId, setLibraryPaperId] = useState('');
   const [questionSearch, setQuestionSearch] = useState('');
   const [newPaperName, setNewPaperName] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const canManage = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN', 'FACULTY'].includes(user.role);
 
   const { data: exam, isLoading } = useQuery({ queryKey: ['exam', id], queryFn: async () => (await api.get(`/exams/${id}`)).data });
+  const { data: libraryPapers } = useQuery({
+    queryKey: ['paper-library'],
+    queryFn: async () => (await api.get('/exams/papers/library')).data,
+    enabled: addLibraryOpen,
+  });
   const { data: questionResults } = useQuery({
     queryKey: ['questions', 'search', questionSearch],
     queryFn: async () => (await api.get('/questions', { params: { search: questionSearch, pageSize: 20 } })).data,
@@ -25,6 +32,19 @@ export default function ExamDetail() {
   });
 
   if (isLoading || !exam) return <Spinner />;
+
+  async function addFromLibrary() {
+    if (!libraryPaperId) return toast.error('Select a saved paper');
+    try {
+      await api.post(`/exams/${id}/papers/from-library`, { libraryPaperId });
+      toast.success('Paper attached from library');
+      setAddLibraryOpen(false);
+      setLibraryPaperId('');
+      queryClient.invalidateQueries({ queryKey: ['exam', id] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
+  }
 
   async function addPaper() {
     if (!newPaperName.trim()) return toast.error('Enter a paper name');
@@ -117,8 +137,9 @@ export default function ExamDetail() {
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-ink">Papers</h2>
           <div className="flex items-center gap-2">
+            <button type="button" className="text-xs text-brand-ink hover:underline" onClick={() => setAddLibraryOpen(true)}>+ From paper library</button>
             <input className="input h-8 w-32 text-xs" placeholder="e.g. Practical" value={newPaperName} onChange={(e) => setNewPaperName(e.target.value)} />
-            <button className="text-xs text-brand-ink hover:underline" onClick={addPaper}>+ Add Paper</button>
+            <button type="button" className="text-xs text-brand-ink hover:underline" onClick={addPaper}>+ Add Paper</button>
           </div>
         </div>
         <div className="space-y-4">
@@ -147,6 +168,24 @@ export default function ExamDetail() {
           ))}
         </div>
       </div>
+
+      <Modal open={addLibraryOpen} onClose={() => setAddLibraryOpen(false)} title="Attach Paper from Library">
+        <div className="space-y-3">
+          <label className="block">
+            <span className="label">Saved Paper</span>
+            <select className="input" value={libraryPaperId} onChange={(e) => setLibraryPaperId(e.target.value)}>
+              <option value="">Select…</option>
+              {(libraryPapers ?? []).map((p: any) => (
+                <option key={p.id} value={p.id}>{p.name} ({p._count?.examQuestions ?? 0} questions, {p.totalMarks} marks)</option>
+              ))}
+            </select>
+          </label>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary" onClick={() => setAddLibraryOpen(false)}>Cancel</button>
+            <button type="button" className="btn-primary" onClick={addFromLibrary}>Attach</button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={!!addQuestionPaperId} onClose={() => setAddQuestionPaperId(null)} title="Add Question from Bank" wide>
         <input className="input mb-3" placeholder="Search questions…" value={questionSearch} onChange={(e) => setQuestionSearch(e.target.value)} />

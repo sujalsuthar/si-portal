@@ -14,13 +14,17 @@ export const api = axios.create({ baseURL: API_URL });
 
 function getStoredTokens() {
   const raw = localStorage.getItem('samp_auth');
-  return raw ? (JSON.parse(raw) as { accessToken: string; refreshToken: string }) : null;
+  return raw ? (JSON.parse(raw) as { accessToken: string; refreshToken: string; sessionId?: string }) : null;
 }
 
-function storeTokens(accessToken: string, refreshToken: string) {
+function storeTokens(accessToken: string, refreshToken: string, sessionId?: string) {
   const raw = localStorage.getItem('samp_auth');
   const parsed = raw ? JSON.parse(raw) : {};
-  localStorage.setItem('samp_auth', JSON.stringify({ ...parsed, accessToken, refreshToken }));
+  localStorage.setItem('samp_auth', JSON.stringify({ ...parsed, accessToken, refreshToken, ...(sessionId ? { sessionId } : {}) }));
+}
+
+export function getStoredSessionId(): string | undefined {
+  return getStoredTokens()?.sessionId;
 }
 
 export function clearAuthStorage() {
@@ -43,7 +47,7 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!tokens?.refreshToken) return null;
   try {
     const { data } = await axios.post(`${API_URL}/auth/refresh`, { refreshToken: tokens.refreshToken });
-    storeTokens(data.accessToken, data.refreshToken);
+    storeTokens(data.accessToken, data.refreshToken, data.sessionId);
     return data.accessToken as string;
   } catch {
     clearAuthStorage();

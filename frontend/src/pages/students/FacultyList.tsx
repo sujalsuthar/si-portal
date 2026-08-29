@@ -37,13 +37,8 @@ export default function FacultyList() {
     <div>
       <PageHeader
         title="Team"
-        subtitle="Instructor and mentor profiles and their assigned batches."
-        actions={
-          <>
-            <input className="input w-56" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            {canManage && <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Add Team Member</button>}
-          </>
-        }
+        subtitle="Instructor and mentor profiles and their mentored students."
+        actions={<input className="input w-56" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} />}
       />
       <Table
         loading={isLoading}
@@ -129,19 +124,7 @@ function FacultyDetailView({ facultyId }: { facultyId: string }) {
         </div>
       </div>
       <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Assigned Batches</h3>
-        {data.batchAssignments.length === 0 ? (
-          <p className="text-sm text-ink-muted">No batch assignments</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {data.batchAssignments.map((a: any) => (
-              <Badge key={a.id}>{a.batch.name} ({a.batch.course.name})</Badge>
-            ))}
-          </div>
-        )}
-      </div>
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Mentored Students</h3>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Students Under This Team Member</h3>
         {data.mentoredStudents.length === 0 ? (
           <p className="text-sm text-ink-muted">No mentored students</p>
         ) : (

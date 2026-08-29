@@ -20,13 +20,21 @@ function StaffBehaviourView() {
   const queryClient = useQueryClient();
   const canAuthorize = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN'].includes(user.role);
   const [studentType, setStudentType] = useState<'STUDENT' | 'INTERN'>('STUDENT');
+  const [batchFilter, setBatchFilter] = useState('');
   const [recordOpen, setRecordOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [form, setForm] = useState({ studentId: '', category: 'PARTICIPATION', type: 'POSITIVE', points: '3', reason: '' });
   const [editTarget, setEditTarget] = useState<any>(null);
   const [editForm, setEditForm] = useState({ category: '', type: '', points: '', reason: '' });
 
-  const { data: events, isLoading } = useQuery({ queryKey: ['behaviour', studentType], queryFn: async () => (await api.get('/behaviour', { params: { studentType } })).data });
+  const { data: batches } = useQuery({
+    queryKey: ['batches', 'active'],
+    queryFn: async () => (await api.get('/batches', { params: { pageSize: 100, status: 'ACTIVE' } })).data,
+  });
+  const { data: events, isLoading } = useQuery({
+    queryKey: ['behaviour', studentType, batchFilter],
+    queryFn: async () => (await api.get('/behaviour', { params: { studentType, ...(batchFilter ? { batchId: batchFilter } : {}) } })).data,
+  });
   const { data: studentResults } = useQuery({
     queryKey: ['students', 'search', studentSearch, studentType],
     queryFn: async () => (await api.get('/students', { params: { search: studentSearch, studentType, pageSize: 10 } })).data,
@@ -75,17 +83,23 @@ function StaffBehaviourView() {
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex gap-1 text-xs">
-          {(['STUDENT', 'INTERN'] as const).map((t) => (
-            <button
-              key={t}
-              className={`rounded-full px-3 py-1 ${studentType === t ? 'bg-brand-600 text-ink' : 'bg-surface-muted text-ink-muted'}`}
-              onClick={() => setStudentType(t)}
-            >
-              {t === 'STUDENT' ? 'Students Behaviour' : 'Interns Behaviour'}
-            </button>
-          ))}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 text-xs">
+            {(['STUDENT', 'INTERN'] as const).map((t) => (
+              <button
+                key={t}
+                className={`rounded-full px-3 py-1 ${studentType === t ? 'bg-brand-600 text-ink' : 'bg-surface-muted text-ink-muted'}`}
+                onClick={() => setStudentType(t)}
+              >
+                {t === 'STUDENT' ? 'Students Behaviour' : 'Interns Behaviour'}
+              </button>
+            ))}
+          </div>
+          <select className="input h-8 w-44 text-xs" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+            <option value="">All batches</option>
+            {(batches?.items ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
         </div>
         <button className="btn-primary" onClick={() => setRecordOpen(true)}>+ Record Event</button>
       </div>
@@ -99,7 +113,6 @@ function StaffBehaviourView() {
           { header: 'Category', cell: (r: any) => r.category },
           { header: 'Points', cell: (r: any) => <Badge tone={r.points >= 0 ? 'green' : 'red'}>{r.points >= 0 ? '+' : ''}{r.points}</Badge> },
           { header: 'Reason', cell: (r: any) => r.reason },
-          { header: 'Status', cell: (r: any) => r.authorizedById ? <Badge tone="green">Authorized</Badge> : <Badge tone="amber">Pending Authorization</Badge> },
           {
             header: '',
             cell: (r: any) => (

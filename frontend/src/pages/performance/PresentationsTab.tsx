@@ -18,13 +18,23 @@ export default function PresentationsTab() {
   const { user } = useAuth();
   const isStaff = user && ['SUPER_ADMIN', 'MANAGEMENT', 'ACADEMIC_ADMIN', 'FACULTY'].includes(user.role);
   const queryClient = useQueryClient();
+  const [batchFilter, setBatchFilter] = useState('');
   const [scoreTarget, setScoreTarget] = useState<any>(null);
   const [scores, setScores] = useState<Record<string, string>>({});
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [form, setForm] = useState({ studentId: '', topic: '', scheduledDate: '' });
 
-  const { data, isLoading } = useQuery({ queryKey: ['presentations'], queryFn: async () => (await api.get('/presentations', { params: { pageSize: 50 } })).data });
+  const { data: batches } = useQuery({
+    queryKey: ['batches', 'active'],
+    queryFn: async () => (await api.get('/batches', { params: { pageSize: 100, status: 'ACTIVE' } })).data,
+    enabled: !!isStaff,
+  });
+  const { data, isLoading } = useQuery({
+    queryKey: ['presentations', batchFilter],
+    queryFn: async () => (await api.get('/presentations', { params: { pageSize: 50, ...(batchFilter ? { batchId: batchFilter } : {}) } })).data,
+  });
+  const batchItems = (batches as { items?: any[] } | undefined)?.items ?? [];
   const { data: studentResults } = useQuery({
     queryKey: ['students', 'search', studentSearch],
     queryFn: async () => (await api.get('/students', { params: { search: studentSearch, pageSize: 10 } })).data,
@@ -62,10 +72,18 @@ export default function PresentationsTab() {
     }
   }
 
+  function batchLabel(r: any) {
+    return r.batch?.name ?? r.student?.currentBatch?.name ?? '-';
+  }
+
   return (
     <div>
       {isStaff && (
-        <div className="mb-3 flex justify-end">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <select className="input h-8 w-44 text-xs" value={batchFilter} onChange={(e) => setBatchFilter(e.target.value)}>
+            <option value="">All batches</option>
+            {(batchItems).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
           <button className="btn-primary" onClick={() => setScheduleOpen(true)}>+ Schedule Presentation</button>
         </div>
       )}
@@ -75,6 +93,7 @@ export default function PresentationsTab() {
         keyFn={(r: any) => r.id}
         columns={[
           { header: 'Student', cell: (r: any) => `${r.student.firstName} ${r.student.lastName}` },
+          { header: 'Batch', cell: (r: any) => batchLabel(r) },
           { header: 'Topic', cell: (r: any) => r.topic },
           { header: 'Date', cell: (r: any) => new Date(r.scheduledDate).toDateString() },
           { header: 'Status', cell: (r: any) => <Badge tone={r.status === 'COMPLETED' ? 'green' : r.status === 'CANCELLED' ? 'red' : 'blue'}>{r.status}</Badge> },

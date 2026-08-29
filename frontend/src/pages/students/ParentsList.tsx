@@ -12,7 +12,7 @@ export default function ParentsList() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const canManage = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN'].includes(user.role);
+  const canManage = user && user.role === 'ACADEMIC_ADMIN';
 
   const { data, isLoading } = useQuery({
     queryKey: ['parents', search],
@@ -40,7 +40,7 @@ export default function ParentsList() {
         subtitle="Manage parent accounts and their linked students."
         actions={
           <>
-            <input className="input w-56" placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input className="input w-56" placeholder="Search by parent or student name…" value={search} onChange={(e) => setSearch(e.target.value)} />
             {canManage && <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Add Parent</button>}
           </>
         }

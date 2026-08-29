@@ -1,33 +1,26 @@
 ﻿import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { api, apiErrorMessage } from '@/lib/api';
+import { api, apiErrorMessage, getStoredSessionId } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import MfaSetupFlow from '@/components/MfaSetupFlow';
 
 export default function ProfilePasswordTab() {
   const { user, refreshMe } = useAuth();
-  const queryClient = useQueryClient();
+  const sessionId = getStoredSessionId();
   const isParent = user?.role === 'PARENT';
-  // Scoped by user id so a browser that has ever signed in as more than one account never
-  // shows a stale, previously-cached user's session list - each user sees only their own.
-  const { data: sessions } = useQuery({ queryKey: ['sessions', user?.id], queryFn: async () => (await api.get('/auth/sessions')).data, enabled: !!user });
-  // Parent Settings replaces Change Password with a Contact section (per the 4.0 issue log).
+  const { data: sessions } = useQuery({
+    queryKey: ['sessions', user?.id],
+    queryFn: async () => (await api.get('/auth/sessions')).data,
+    enabled: !!user,
+  });
+  const currentSession = (sessions ?? []).find((s: any) => s.id === sessionId) ?? (sessions ?? [])[0];
+
   const { data: facultyContacts } = useQuery({
     queryKey: ['parent-faculty-contacts'],
     queryFn: async () => (await api.get('/parents/me/faculty-contacts')).data,
     enabled: isParent,
   });
-
-  async function revokeSession(id: string) {
-    try {
-      await api.delete(`/auth/sessions/${id}`);
-      toast.success('Session signed out');
-      queryClient.invalidateQueries({ queryKey: ['sessions', user?.id] });
-    } catch (err) {
-      toast.error(apiErrorMessage(err));
-    }
-  }
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -125,17 +118,15 @@ export default function ProfilePasswordTab() {
       </div>
 
       <div className="card p-4">
-        <h2 className="mb-3 text-sm font-semibold text-ink">Active Sessions</h2>
-        <p className="mb-3 text-xs text-ink-muted">Devices/browsers currently signed in to your account. Sign out any you don't recognize.</p>
-        <div className="space-y-2">
-          {(sessions ?? []).map((s: any) => (
-            <div key={s.id} className="flex items-center justify-between rounded-lg border border-edge px-3 py-2 text-sm">
-              <span className="text-ink-muted">Signed in {new Date(s.createdAt).toLocaleString()} · expires {new Date(s.expiresAt).toLocaleDateString()}</span>
-              <button className="text-xs text-red-600 dark:text-red-400 hover:underline" onClick={() => revokeSession(s.id)}>Sign out</button>
-            </div>
-          ))}
-          {sessions?.length === 0 && <p className="text-sm text-ink-muted">No other active sessions.</p>}
-        </div>
+        <h2 className="mb-3 text-sm font-semibold text-ink">Current Session</h2>
+        <p className="mb-3 text-xs text-ink-muted">The browser session you are signed in with right now.</p>
+        {currentSession ? (
+          <div className="rounded-lg border border-edge px-3 py-2 text-sm text-ink-muted">
+            Signed in {new Date(currentSession.createdAt).toLocaleString()} · expires {new Date(currentSession.expiresAt).toLocaleDateString()}
+          </div>
+        ) : (
+          <p className="text-sm text-ink-muted">Session details unavailable.</p>
+        )}
       </div>
     </div>
   );

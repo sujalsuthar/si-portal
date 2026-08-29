@@ -31,6 +31,8 @@ export default function ProjectDetail() {
 
   if (isLoading || !project) return <Spinner />;
 
+  const singleGroup = project.groups[0];
+
   function isMemberOf(g: any) {
     return myStudentId && g.members.some((m: any) => m.student.id === myStudentId);
   }
@@ -153,6 +155,84 @@ export default function ProjectDetail() {
     }
   }
 
+  function renderGroupCard(g: any) {
+    const canEditRepo = isStaff || isMemberOf(g);
+    const groupCanAddMember = g.members.length < project.groupSize;
+    return (
+      <div className="card p-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-semibold text-ink">Project Group ({g.members.length}/{project.groupSize} students)</h3>
+          {g.marks.length > 0 && <Badge tone="green">{g.marks[0].marksObtained}/{g.marks[0].maxMarks}</Badge>}
+        </div>
+
+        <p className="mb-2 text-xs text-ink-muted">
+          Leader: {g.leader ? `${g.leader.firstName} ${g.leader.lastName}` : '-'}
+          {isAdmin && g.members.length > 0 && (
+            <button type="button" className="ml-2 text-brand-ink hover:underline" onClick={() => setLeader(g.id)}>Randomize</button>
+          )}
+        </p>
+
+        <ul className="mb-2 space-y-1 text-sm">
+          {g.members.map((m: any) => (
+            <li key={m.id} className="flex items-center justify-between">
+              <span>{m.student.firstName} {m.student.lastName}</span>
+              <span className="flex items-center gap-2">
+                {isAdmin && g.leaderId !== m.student.id && (
+                  <button type="button" className="text-xs text-brand-ink hover:underline" onClick={() => setLeader(g.id, m.student.id)}>Make Leader</button>
+                )}
+                {isStaff && <button type="button" className="text-xs text-red-600 dark:text-red-400 hover:underline" onClick={() => removeMember(g.id, m.student.id)}>Remove</button>}
+              </span>
+            </li>
+          ))}
+          {g.members.length === 0 && <li className="text-ink-muted">No students added yet — add up to {project.groupSize} students from this batch.</li>}
+        </ul>
+
+        <div className="mb-2">
+          <span className="label">GitHub Link (required)</span>
+          {canEditRepo ? (
+            <div className="flex gap-1">
+              <input
+                className="input h-8 text-xs"
+                placeholder="https://github.com/…"
+                value={repoEdits[g.id] ?? g.repoLink ?? ''}
+                onChange={(e) => setRepoEdits((prev) => ({ ...prev, [g.id]: e.target.value }))}
+              />
+              <button type="button" className="btn-secondary shrink-0 px-2 text-xs" onClick={() => saveRepoLink(g.id)}>Save</button>
+            </div>
+          ) : (
+            <p className="text-xs text-ink-muted">{g.repoLink || '-'}</p>
+          )}
+        </div>
+
+        <div className="mb-2">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="label">Weekly Progress Reports</span>
+            {(isStaff || isMemberOf(g)) && <button type="button" className="text-xs text-brand-ink hover:underline" onClick={() => setProgressGroupId(g.id)}>+ Add Update</button>}
+          </div>
+          {(g.progressUpdates ?? []).length === 0 ? (
+            <p className="text-xs text-ink-muted">No weekly updates yet — students should log what they completed each week.</p>
+          ) : (
+            <ul className="space-y-1 text-xs">
+              {g.progressUpdates.map((p: any) => (
+                <li key={p.id} className="rounded bg-surface-muted px-2 py-1">
+                  <span className="font-medium text-ink">Week {p.weekNumber}:</span> {p.note}
+                  {p.link && <a className="ml-1 text-brand-ink hover:underline" href={p.link} target="_blank" rel="noreferrer">link</a>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {isStaff && (
+          <div className="flex flex-wrap gap-2 text-xs">
+            {groupCanAddMember && <button type="button" className="text-brand-ink hover:underline" onClick={() => setAddMemberGroupId(g.id)}>+ Add Student</button>}
+            <button type="button" className="text-brand-ink hover:underline" onClick={() => openGrade(g)}>{g.marks.length > 0 ? 'Edit Grade' : 'Grade Group'}</button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader
@@ -160,99 +240,25 @@ export default function ProjectDetail() {
         subtitle={`Intern Project · ${project.batch.name} · Group size: ${project.groupSize}`}
         actions={
           isStaff && (
-            <>
-              <button className="btn-secondary" onClick={toggleGrading}>{project.gradingOpen ? 'Close Grading' : 'Reopen Grading'}</button>
-              <button className="btn-primary" onClick={addGroup}>+ Add Group</button>
-            </>
+            <button className="btn-secondary" onClick={toggleGrading}>{project.gradingOpen ? 'Close Grading' : 'Reopen Grading'}</button>
           )
         }
       />
       {project.scope && <p className="mb-4 text-sm text-ink-muted">{project.scope}</p>}
+      <p className="mb-4 text-xs text-ink-muted">Each batch project has one group of up to {project.groupSize} students. Add the GitHub repository link and weekly progress reports below.</p>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {project.groups.map((g: any) => {
-          const canEditRepo = isStaff || isMemberOf(g);
-          return (
-            <div key={g.id} className="card p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-semibold text-ink">{g.name ?? `Group ${g.sequence}`}</h3>
-                {g.marks.length > 0 && <Badge tone="green">{g.marks[0].marksObtained}/{g.marks[0].maxMarks}</Badge>}
-              </div>
+      {!singleGroup ? (
+        <div className="card p-4">
+          <p className="mb-3 text-sm text-ink-muted">No project group yet.</p>
+          {isStaff && <button className="btn-primary" onClick={addGroup}>Create Group</button>}
+        </div>
+      ) : (
+        <div className="max-w-3xl">
+          {renderGroupCard(singleGroup)}
+        </div>
+      )}
 
-              <p className="mb-2 text-xs text-ink-muted">
-                Leader: {g.leader ? `${g.leader.firstName} ${g.leader.lastName}` : '-'}
-                {isAdmin && g.members.length > 0 && (
-                  <span className="ml-2 inline-flex gap-2">
-                    <button className="text-brand-ink hover:underline" onClick={() => setLeader(g.id)}>Randomize</button>
-                  </span>
-                )}
-              </p>
-
-              <ul className="mb-2 space-y-1 text-sm">
-                {g.members.map((m: any) => (
-                  <li key={m.id} className="flex items-center justify-between">
-                    <span>{m.student.firstName} {m.student.lastName}</span>
-                    <span className="flex items-center gap-2">
-                      {isAdmin && g.leaderId !== m.student.id && (
-                        <button className="text-xs text-brand-ink hover:underline" onClick={() => setLeader(g.id, m.student.id)}>Make Leader</button>
-                      )}
-                      {isStaff && <button className="text-xs text-red-600 dark:text-red-400 hover:underline" onClick={() => removeMember(g.id, m.student.id)}>Remove</button>}
-                    </span>
-                  </li>
-                ))}
-                {g.members.length === 0 && <li className="text-ink-muted">No members yet</li>}
-              </ul>
-
-              <div className="mb-2">
-                <span className="label">GitHub Link</span>
-                {canEditRepo ? (
-                  <div className="flex gap-1">
-                    <input
-                      className="input h-8 text-xs"
-                      placeholder="https://github.com/…"
-                      value={repoEdits[g.id] ?? g.repoLink ?? ''}
-                      onChange={(e) => setRepoEdits((prev) => ({ ...prev, [g.id]: e.target.value }))}
-                    />
-                    <button className="btn-secondary shrink-0 px-2 text-xs" onClick={() => saveRepoLink(g.id)}>Save</button>
-                  </div>
-                ) : (
-                  <p className="text-xs text-ink-muted">{g.repoLink || '-'}</p>
-                )}
-              </div>
-
-              <div className="mb-2">
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="label">Weekly Progress</span>
-                  {(isStaff || isMemberOf(g)) && <button className="text-xs text-brand-ink hover:underline" onClick={() => setProgressGroupId(g.id)}>+ Add Update</button>}
-                </div>
-                {(g.progressUpdates ?? []).length === 0 ? (
-                  <p className="text-xs text-ink-muted">No weekly updates yet</p>
-                ) : (
-                  <ul className="space-y-1 text-xs">
-                    {g.progressUpdates.map((p: any) => (
-                      <li key={p.id} className="rounded bg-surface-muted px-2 py-1">
-                        <span className="font-medium text-ink">Week {p.weekNumber}:</span> {p.note}
-                        {p.link && <a className="ml-1 text-brand-ink hover:underline" href={p.link} target="_blank" rel="noreferrer">link</a>}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {isStaff && (
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <button className="text-brand-ink hover:underline" onClick={() => setAddMemberGroupId(g.id)}>+ Add Member</button>
-                  <button className="text-brand-ink hover:underline" onClick={() => openGrade(g)}>{g.marks.length > 0 ? 'Edit Grade' : 'Grade Group'}</button>
-                  {isAdmin && <button className="text-red-600 dark:text-red-400 hover:underline" onClick={() => removeGroup(g.id)}>Remove Group</button>}
-                </div>
-              )}
-            </div>
-          );
-        })}
-        {project.groups.length === 0 && <p className="text-sm text-ink-muted">No groups yet</p>}
-      </div>
-
-      <Modal open={!!addMemberGroupId} onClose={() => setAddMemberGroupId(null)} title="Add Member">
+      <Modal open={!!addMemberGroupId} onClose={() => setAddMemberGroupId(null)} title="Add Student">
         <input className="input mb-2" placeholder="Search student in this batch…" value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
         <div className="max-h-48 overflow-y-auto">
           {(studentResults?.items ?? []).map((s: any) => (

@@ -49,7 +49,11 @@ presentationsRouter.get(
         skip: pagination.skip,
         take: pagination.take,
         orderBy: { scheduledDate: 'desc' },
-        include: { student: { select: { id: true, firstName: true, lastName: true, studentCode: true } }, evaluatorFaculty: { select: { firstName: true, lastName: true } } },
+        include: {
+          student: { select: { id: true, firstName: true, lastName: true, studentCode: true, currentBatch: { select: { id: true, name: true } } } },
+          batch: { select: { id: true, name: true } },
+          evaluatorFaculty: { select: { firstName: true, lastName: true } },
+        },
       }),
       prisma.presentation.count({ where }),
     ]);

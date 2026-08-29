@@ -158,50 +158,46 @@ function BuildPaperPanel({
   onClear: () => void;
   onDone: (examId: string) => void;
 }) {
-  const [mode, setMode] = useState<'existing' | 'new'>('existing');
+  const queryClient = useQueryClient();
+  const [mode, setMode] = useState<'library' | 'exam'>('library');
   const [examId, setExamId] = useState('');
   const [paperName, setPaperName] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const [newTitle, setNewTitle] = useState('');
-  const [newBatchId, setNewBatchId] = useState('');
-  const [newSubject, setNewSubject] = useState('');
-  const [newExamDate, setNewExamDate] = useState('');
-  const [newDuration, setNewDuration] = useState('60');
+  const { data: libraryPapers, refetch: refetchLibrary } = useQuery({
+    queryKey: ['paper-library'],
+    queryFn: async () => (await api.get('/exams/papers/library')).data,
+  });
+  const { data: exams } = useQuery({
+    queryKey: ['exams', 'all'],
+    queryFn: async () => (await api.get('/exams', { params: { pageSize: 100 } })).data,
+    enabled: mode === 'exam',
+  });
 
-  const { data: exams } = useQuery({ queryKey: ['exams', 'all'], queryFn: async () => (await api.get('/exams', { params: { pageSize: 100 } })).data });
-  const { data: batches } = useQuery({ queryKey: ['batches', 'all'], queryFn: async () => (await api.get('/batches', { params: { pageSize: 100 } })).data, enabled: mode === 'new' });
-
-  async function buildPaper() {
+  async function savePaper() {
     if (selectedQuestions.length === 0) return toast.error('Select at least one question from the bank');
     if (!paperName.trim()) return toast.error('Enter a paper name');
 
     setSubmitting(true);
     try {
-      let targetExamId = examId;
-      if (mode === 'new') {
-        if (!newTitle.trim() || !newBatchId || !newSubject.trim()) return toast.error('Fill in the new exam details');
-        const res = await api.post('/exams', {
-          title: newTitle,
-          batchId: newBatchId,
-          subject: newSubject,
-          examDate: newExamDate || undefined,
-          durationMinutes: newDuration ? Number(newDuration) : undefined,
+      if (mode === 'library') {
+        await api.post('/exams/papers/library', {
+          name: paperName,
+          questionIds: selectedQuestions.map((q: any) => q.id),
         });
-        targetExamId = res.data.id;
-        const examDetail = await api.get(`/exams/${targetExamId}`);
-        const autoPaper = examDetail.data.papers[0];
-        if (autoPaper) await api.put(`/exams/papers/${autoPaper.id}`, { name: paperName });
-        const paperId = autoPaper?.id;
-        for (const q of selectedQuestions) await api.post(`/exams/papers/${paperId}/questions`, { questionId: q.id });
+        toast.success('Paper saved to library');
+        setPaperName('');
+        onClear();
+        refetchLibrary();
+        queryClient.invalidateQueries({ queryKey: ['paper-library'] });
       } else {
-        if (!targetExamId) return toast.error('Select an exam');
-        const paperRes = await api.post(`/exams/${targetExamId}/papers`, { name: paperName });
+        if (!examId) return toast.error('Select an exam');
+        const paperRes = await api.post(`/exams/${examId}/papers`, { name: paperName });
         const paperId = paperRes.data.id;
         for (const q of selectedQuestions) await api.post(`/exams/papers/${paperId}/questions`, { questionId: q.id });
+        toast.success('Paper attached to exam');
+        onDone(examId);
       }
-      toast.success('Paper created');
-      onDone(targetExamId);
     } catch (err) {
       toast.error(apiErrorMessage(err));
     } finally {
@@ -211,37 +207,22 @@ function BuildPaperPanel({
 
   return (
     <div className="card sticky top-4 space-y-3 p-4">
-      <h2 className="text-sm font-semibold text-ink">Build a Paper</h2>
+      <h2 className="text-sm font-semibold text-ink">Paper Creation</h2>
+      <p className="text-xs text-ink-muted">Save reusable papers here anytime. When scheduling an exam, attach a saved paper from the exam detail page.</p>
 
       <div className="flex gap-2 text-xs">
-        <button className={`rounded-full px-3 py-1 ${mode === 'existing' ? 'bg-brand-600 text-ink' : 'bg-surface-muted text-ink-muted'}`} onClick={() => setMode('existing')}>Existing Exam</button>
-        <button className={`rounded-full px-3 py-1 ${mode === 'new' ? 'bg-brand-600 text-ink' : 'bg-surface-muted text-ink-muted'}`} onClick={() => setMode('new')}>New Exam</button>
+        <button type="button" className={`rounded-full px-3 py-1 ${mode === 'library' ? 'bg-brand-600 text-ink' : 'bg-surface-muted text-ink-muted'}`} onClick={() => setMode('library')}>Save to Library</button>
+        <button type="button" className={`rounded-full px-3 py-1 ${mode === 'exam' ? 'bg-brand-600 text-ink' : 'bg-surface-muted text-ink-muted'}`} onClick={() => setMode('exam')}>Attach to Exam</button>
       </div>
 
-      {mode === 'existing' ? (
+      {mode === 'exam' && (
         <label className="block">
           <span className="label">Exam</span>
           <select className="input" value={examId} onChange={(e) => setExamId(e.target.value)}>
             <option value="">Select…</option>
-            {exams?.items?.map((e: any) => <option key={e.id} value={e.id}>{e.title} ({e.batch.name})</option>)}
+            {exams?.items?.map((e: any) => <option key={e.id} value={e.id}>{e.title} ({e.batch?.name})</option>)}
           </select>
         </label>
-      ) : (
-        <div className="space-y-2">
-          <label className="block"><span className="label">Exam Title</span><input className="input" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} /></label>
-          <label className="block">
-            <span className="label">Batch</span>
-            <select className="input" value={newBatchId} onChange={(e) => setNewBatchId(e.target.value)}>
-              <option value="">Select…</option>
-              {batches?.items?.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </label>
-          <label className="block"><span className="label">Subject</span><input className="input" value={newSubject} onChange={(e) => setNewSubject(e.target.value)} /></label>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block"><span className="label">Exam Date</span><input className="input" type="date" value={newExamDate} onChange={(e) => setNewExamDate(e.target.value)} /></label>
-            <label className="block"><span className="label">Duration (min)</span><input className="input" type="number" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} /></label>
-          </div>
-        </div>
       )}
 
       <label className="block"><span className="label">Paper Name</span><input className="input" placeholder="e.g. Practical Paper" value={paperName} onChange={(e) => setPaperName(e.target.value)} /></label>
@@ -249,20 +230,35 @@ function BuildPaperPanel({
       <div>
         <div className="mb-1 flex items-center justify-between">
           <span className="label">Selected Questions ({selectedQuestions.length}, {totalSelectedMarks} marks)</span>
-          {selectedQuestions.length > 0 && <button className="text-xs text-ink-muted hover:underline" onClick={onClear}>Clear</button>}
+          {selectedQuestions.length > 0 && <button type="button" className="text-xs text-ink-muted hover:underline" onClick={onClear}>Clear</button>}
         </div>
-        <div className="max-h-56 space-y-1 overflow-y-auto">
+        <div className="max-h-40 space-y-1 overflow-y-auto">
           {selectedQuestions.length === 0 && <p className="text-xs text-ink-muted">Tick questions from the list to add them here.</p>}
           {selectedQuestions.map((q: any) => (
             <div key={q.id} className="flex items-center justify-between gap-2 rounded bg-surface-muted px-2 py-1 text-xs">
               <span className="line-clamp-1">{q.questionText}</span>
-              <button className="text-red-600 dark:text-red-400 shrink-0" onClick={() => onRemove(q.id)}>✕</button>
+              <button type="button" className="text-red-600 dark:text-red-400 shrink-0" onClick={() => onRemove(q.id)}>✕</button>
             </div>
           ))}
         </div>
       </div>
 
-      <button className="btn-primary w-full" onClick={buildPaper} disabled={submitting}>{submitting ? 'Creating…' : '+ Add Paper'}</button>
+      <button type="button" className="btn-primary w-full" onClick={savePaper} disabled={submitting}>
+        {submitting ? 'Saving…' : mode === 'library' ? '+ Save Paper' : '+ Add Paper to Exam'}
+      </button>
+
+      <div>
+        <span className="label">Saved Papers ({libraryPapers?.length ?? 0})</span>
+        <div className="mt-1 max-h-36 space-y-1 overflow-y-auto">
+          {(libraryPapers ?? []).length === 0 && <p className="text-xs text-ink-muted">No saved papers yet.</p>}
+          {(libraryPapers ?? []).map((p: any) => (
+            <div key={p.id} className="rounded bg-surface-muted px-2 py-1.5 text-xs">
+              <p className="font-medium text-ink">{p.name}</p>
+              <p className="text-ink-muted">{p._count?.examQuestions ?? 0} questions · {p.totalMarks} marks</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
