@@ -117,7 +117,29 @@ async function adminDashboard() {
     prisma.batchTransfer.findMany({ where: { status: TransferStatus.PENDING }, include: { student: { select: { firstName: true, lastName: true } }, toBatch: { select: { name: true } } } }),
     prisma.certification.count({ where: { status: 'SCHEDULED' } }),
   ]);
-  return { counts: { students, parents, faculty, batches }, pendingTransfers, pendingCertifications };
+
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  const weekSessionRows = await prisma.session.findMany({
+    where: { sessionDate: { gte: weekStart, lt: weekEnd }, status: { not: 'CANCELLED' } },
+    include: { batch: { select: { id: true, name: true } } },
+    orderBy: { sessionDate: 'asc' },
+  });
+  const weekSessions = weekSessionRows.map((s) => ({
+    id: s.id,
+    topic: s.topic,
+    sessionDate: s.sessionDate,
+    batchId: s.batch.id,
+    batchName: s.batch.name,
+    color: s.sessionDate.getDay() % 2 === 0 ? 'red' : 'navy',
+  }));
+
+  return { counts: { students, parents, faculty, batches }, pendingTransfers, pendingCertifications, weekSessions };
 }
 
 /** Finance home screen for Accounts — fee totals only (no academic ops). */

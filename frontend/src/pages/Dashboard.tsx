@@ -17,7 +17,7 @@ export default function Dashboard() {
   const { data: actionCenter } = useQuery({
     queryKey: ['dashboard', 'action-center'],
     queryFn: async () => (await api.get('/dashboard/action-center')).data,
-    enabled: !!user && user.role !== 'PARENT' && user.role !== 'STUDENT' && ['STUDENT', 'FACULTY', 'ACADEMIC_ADMIN', 'SUPER_ADMIN'].includes(user.role),
+    enabled: !!user && user.role === 'FACULTY',
   });
 
   if (isLoading) return <Spinner />;
@@ -39,7 +39,7 @@ export default function Dashboard() {
       {user?.role === 'STUDENT' && <StudentDashboard data={data} />}
       {user?.role === 'PARENT' && <ParentDashboard data={data} />}
 
-      {actionCenter && user?.role !== 'STUDENT' && <ActionCenterPanel actionCenter={actionCenter} />}
+      {actionCenter && user?.role === 'FACULTY' && <ActionCenterPanel actionCenter={actionCenter} />}
 
       <DashboardCharts />
     </div>
@@ -259,6 +259,11 @@ function AdminDashboard({ data }: { data: any }) {
         <StatCard label="Team" value={counts.faculty ?? 0} />
         <StatCard label="Batches" value={counts.batches ?? 0} />
       </div>
+
+      <div className="mt-6">
+        <WeekCalendar weekSessions={data?.weekSessions ?? []} />
+      </div>
+
       <h2 className="mb-3 mt-6 text-sm font-semibold text-ink">Pending Batch Transfers ({data?.pendingTransfers?.length ?? 0})</h2>
       <div className="card divide-y divide-edge">
         {(data?.pendingTransfers ?? []).length === 0 && <p className="px-4 py-6 text-center text-sm text-ink-muted">No pending transfers</p>}

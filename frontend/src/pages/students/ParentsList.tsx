@@ -1,48 +1,26 @@
 ﻿import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { useForm } from 'react-hook-form';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { PageHeader, Table, Modal, Badge, Spinner } from '@/components/ui';
 
 export default function ParentsList() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const canManage = user && user.role === 'ACADEMIC_ADMIN';
 
   const { data, isLoading } = useQuery({
     queryKey: ['parents', search],
     queryFn: async () => (await api.get('/parents', { params: { search, pageSize: 50 } })).data,
   });
 
-  const { register, handleSubmit, reset } = useForm();
-
-  async function onCreate(values: any) {
-    try {
-      const res = await api.post('/parents', values);
-      toast.success(`Parent account created. Temp password: ${res.data.tempPassword}`, { duration: 8000 });
-      setCreateOpen(false);
-      reset();
-      queryClient.invalidateQueries({ queryKey: ['parents'] });
-    } catch (err) {
-      toast.error(apiErrorMessage(err));
-    }
-  }
-
   return (
     <div>
       <PageHeader
         title="Parents & Guardians"
-        subtitle="Manage parent accounts and their linked students."
+        subtitle="View parent accounts and their linked students."
         actions={
-          <>
-            <input className="input w-56 max-lg:w-full" placeholder="Search by parent or student name…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            {canManage && <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Add Parent</button>}
-          </>
+          <input className="input w-56 max-lg:w-full" placeholder="Search by parent or student name…" value={search} onChange={(e) => setSearch(e.target.value)} />
         }
       />
       <Table
@@ -56,25 +34,6 @@ export default function ParentsList() {
           { header: 'Main Mobile', cell: (r: any) => r.phone ?? '-' },
         ]}
       />
-
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Parent" wide>
-        <form onSubmit={handleSubmit(onCreate)} className="form-grid">
-          <label className="block"><span className="label">First Name</span><input className="input" {...register('firstName', { required: true })} /></label>
-          <label className="block"><span className="label">Last Name</span><input className="input" {...register('lastName', { required: true })} /></label>
-          <label className="block"><span className="label">Login Email (Username)</span><input className="input" type="email" {...register('email', { required: true })} /></label>
-          <label className="block"><span className="label">Contact Email (optional)</span><input className="input" type="email" {...register('contactEmail')} /></label>
-          <label className="block"><span className="label">Main Mobile</span><input className="input" {...register('phone')} /></label>
-          <label className="block"><span className="label">Alternative Mobile</span><input className="input" {...register('altPhone')} /></label>
-          <label className="block"><span className="label">Occupation</span><input className="input" {...register('occupation')} /></label>
-          <div />
-          <label className="block sm:col-span-2"><span className="label">Current Address</span><input className="input" {...register('currentAddress')} /></label>
-          <label className="block sm:col-span-2"><span className="label">Permanent Address</span><input className="input" {...register('permanentAddress')} /></label>
-          <div className="col-span-1 mt-2 flex justify-end gap-2 sm:col-span-2">
-            <button type="button" className="btn-secondary" onClick={() => setCreateOpen(false)}>Cancel</button>
-            <button type="submit" className="btn-primary">Create</button>
-          </div>
-        </form>
-      </Modal>
 
       <Modal open={!!viewingId} onClose={() => setViewingId(null)} title="Parent Details" wide>
         {viewingId && <ParentDetailView parentId={viewingId} />}

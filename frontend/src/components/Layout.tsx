@@ -25,7 +25,7 @@ const NAV: NavItem[] = [
   { to: '/projects', label: 'Projects', roles: NOT_PARENT },
   { to: '/fees', label: 'Fees', roles: FEE_ROLES },
   { to: '/certificates', label: 'Certificates', roles: CERTIFICATE_ROLES },
-  { to: '/action-centre', label: 'Action Centre' },
+  { to: '/action-centre', label: 'Action Centre', roles: ['FACULTY', 'STUDENT', 'PARENT', 'MANAGEMENT', 'ACCOUNTS'] },
   { to: '/reports', label: 'Reports', roles: REPORTS_ROLES },
   { to: '/notifications', label: 'Notifications' },
   { to: '/calendar', label: 'Calendar' },

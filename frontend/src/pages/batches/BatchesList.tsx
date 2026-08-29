@@ -7,6 +7,8 @@ import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
 import { PageHeader, Table, Modal, Badge } from '@/components/ui';
 
+import { ADMIN_LIKE } from '@/lib/navRoles';
+
 export default function BatchesList() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -14,6 +16,7 @@ export default function BatchesList() {
   const [createOpen, setCreateOpen] = useState(false);
   const [coursesOpen, setCoursesOpen] = useState(false);
   const canManage = user && user.role === 'SUPER_ADMIN';
+  const canEditTimetable = user && ADMIN_LIKE.includes(user.role);
 
   const { data, isLoading } = useQuery({ queryKey: ['batches'], queryFn: async () => (await api.get('/batches', { params: { pageSize: 100 } })).data });
   const { data: courses } = useQuery({ queryKey: ['courses', 'all'], queryFn: async () => (await api.get('/courses', { params: { pageSize: 100 } })).data });
@@ -56,6 +59,16 @@ export default function BatchesList() {
           { header: 'Strength', cell: (r: any) => `${r._count.students}${r.capacity ? ` / ${r.capacity}` : ''}` },
           { header: 'Start Date', cell: (r: any) => new Date(r.startDate).toDateString() },
           { header: 'Status', cell: (r: any) => <Badge tone={r.status === 'ACTIVE' ? 'green' : 'slate'}>{r.status}</Badge> },
+          ...(canEditTimetable
+            ? [{
+                header: 'Timetable',
+                cell: (r: any) => (
+                  <button type="button" className="text-xs text-brand-ink hover:underline" onClick={() => navigate(`/batches/${r.id}?timetable=1`)}>
+                    Edit
+                  </button>
+                ),
+              }]
+            : []),
         ]}
       />
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add Batch">

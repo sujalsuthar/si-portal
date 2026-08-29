@@ -164,3 +164,7 @@ _Add new rows below as requests arrive._
 | 20 | Parents | Filter exam marks by batch in parent detail view | Done |
 | 21 | Batches | Bulk add students + editable timetable on batch detail | Done |
 | 22 | Tasks | Submission status updates immediately after evaluation | Done |
+| 23 | Dashboard | Academic Admin week calendar on dashboard | Done |
+| 24 | Dashboard | Remove Action Center panel for Super Admin / Academic Admin | Done |
+| 25 | Parents | Remove Add Parent for admin roles; search by student name | Done |
+| 26 | Batches | Edit timetable from batches list and batch detail | Done |

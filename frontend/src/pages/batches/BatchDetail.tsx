@@ -1,5 +1,5 @@
-﻿import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+﻿import { useState, useEffect } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
@@ -10,6 +10,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function BatchDetail() {
   const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const canManage = user && ['SUPER_ADMIN', 'ACADEMIC_ADMIN'].includes(user.role);
@@ -33,6 +34,17 @@ export default function BatchDetail() {
     queryFn: async () => (await api.get(`/batches/${id}/ranking`)).data,
     enabled: showRanking,
   });
+
+  useEffect(() => {
+    if (!batch || !canManage || searchParams.get('timetable') !== '1') return;
+    setTimetableDraft(
+      batch.timetableSlots.length > 0
+        ? batch.timetableSlots.map((s: any) => ({ ...s }))
+        : [{ dayOfWeek: 1, startTime: '09:00', endTime: '10:00', subject: '', meetingLink: '' }],
+    );
+    setTimetableOpen(true);
+    setSearchParams({}, { replace: true });
+  }, [batch, canManage, searchParams, setSearchParams]);
 
   if (!batch) return null;
 
@@ -149,7 +161,7 @@ export default function BatchDetail() {
         <div>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-ink">Timetable</h2>
-            {canManage && <button className="text-xs text-brand-ink hover:underline" onClick={openTimetableEditor}>Edit timetable</button>}
+            {canManage && <button className="btn-secondary text-xs" onClick={openTimetableEditor}>Edit Timetable</button>}
           </div>
           <div className="card divide-y divide-edge">
             {batch.timetableSlots.length === 0 && <p className="px-4 py-4 text-center text-sm text-ink-muted">No timetable slots</p>}
