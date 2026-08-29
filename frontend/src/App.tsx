@@ -31,6 +31,7 @@ import NotificationsPage from '@/pages/NotificationsPage';
 import SettingsHub from '@/pages/settings/SettingsHub';
 import FeesPage from '@/pages/fees/FeesPage';
 import ProjectsList from '@/pages/projects/ProjectsList';
+import ProjectsRoot from '@/pages/projects/ProjectsRoot';
 import ProjectDetail from '@/pages/projects/ProjectDetail';
 import InternsList from '@/pages/interns/InternsList';
 import InternDetail from '@/pages/interns/InternDetail';
@@ -100,9 +101,11 @@ export default function App() {
 
           <Route element={<ProtectedRoute roles={NOT_PARENT} />}>
             <Route path="/performance/*" element={<PerformanceHub />} />
-            <Route path="/projects" element={<ProjectsList />} />
+            <Route path="/projects/students" element={<ProjectsList fixedKind="STUDENT" />} />
+            <Route path="/projects/interns" element={<ProjectsList fixedKind="INTERN" />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
           </Route>
+          <Route path="/projects" element={<ProjectsRoot />} />
 
           <Route element={<ProtectedRoute roles={INTERN_ROLES} />}>
             <Route path="/interns" element={<InternsList />} />

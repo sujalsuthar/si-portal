@@ -6,7 +6,7 @@ import { PageHeader, Spinner, EmptyState } from '@/components/ui';
 export default function PaperLibrary() {
   const { data: libraryPapers, isLoading } = useQuery({
     queryKey: ['paper-library'],
-    queryFn: async () => (await api.get('/paper-library')).data,
+    queryFn: async () => (await api.get('/exams/papers/library')).data,
   });
 
   return (

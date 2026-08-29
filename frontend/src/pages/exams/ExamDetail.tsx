@@ -22,7 +22,7 @@ export default function ExamDetail() {
   const { data: exam, isLoading } = useQuery({ queryKey: ['exam', id], queryFn: async () => (await api.get(`/exams/${id}`)).data });
   const { data: libraryPapers } = useQuery({
     queryKey: ['paper-library'],
-    queryFn: async () => (await api.get('/paper-library')).data,
+    queryFn: async () => (await api.get('/exams/papers/library')).data,
     enabled: addLibraryOpen,
   });
   const { data: questionResults } = useQuery({

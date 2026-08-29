@@ -281,7 +281,7 @@ function BuildPaperPanel({
 
   const { data: libraryPapers, refetch: refetchLibrary } = useQuery({
     queryKey: ['paper-library'],
-    queryFn: async () => (await api.get('/paper-library')).data,
+    queryFn: async () => (await api.get('/exams/papers/library')).data,
   });
   const { data: exams, isLoading: examsLoading } = useQuery({
     queryKey: ['exams', 'all'],
@@ -299,7 +299,7 @@ function BuildPaperPanel({
     try {
       const questionIds = selectedQuestions.map((q) => q.id);
       if (mode === 'library') {
-        await api.post('/paper-library', { name: paperName, questionIds });
+        await api.post('/exams/papers/library', { name: paperName, questionIds });
         toast.success('Paper saved to library');
         setPaperName('');
         onClear();

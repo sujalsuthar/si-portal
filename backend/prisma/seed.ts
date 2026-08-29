@@ -656,7 +656,7 @@ async function main() {
 
   // ---------------------------------------------------------------- Projects (SAMP 2.0)
   const project = await prisma.project.create({
-    data: { batchId: fswdBatch.id, name: 'Capstone: Full Stack Portfolio App', scope: 'Build and deploy a full stack app covering the batch syllabus.', groupSize: 3, createdById: mentorFaculty.userId },
+    data: { batchId: fswdBatch.id, name: 'Capstone: Full Stack Portfolio App', scope: 'Build and deploy a full stack app covering the batch syllabus.', groupSize: 3, kind: 'STUDENT', createdById: mentorFaculty.userId },
   });
   for (let g = 0; g < 3; g++) {
     const group = await prisma.projectGroup.create({ data: { projectId: project.id, sequence: g + 1 } });

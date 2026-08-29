@@ -4,16 +4,18 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
-import { PageHeader, Table, Modal, Badge, Spinner, EmptyState, TabBar } from '@/components/ui';
+import { PageHeader, Table, Modal, Badge, Spinner, EmptyState } from '@/components/ui';
 
 type ProjectKind = 'STUDENT' | 'INTERN';
 
-export default function ProjectsList() {
+type Props = { fixedKind?: ProjectKind };
+
+export default function ProjectsList({ fixedKind }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isStudent = user?.role === 'STUDENT';
   const isFaculty = user?.role === 'FACULTY';
-  const [kind, setKind] = useState<ProjectKind>(isFaculty ? 'INTERN' : 'STUDENT');
+  const kind: ProjectKind = fixedKind ?? (isFaculty ? 'INTERN' : 'STUDENT');
   const [selectedBatch, setSelectedBatch] = useState<{ id: string; name: string } | null>(null);
 
   const { data: studentProjects, isLoading: loadingStudentProjects } = useQuery({
@@ -28,14 +30,10 @@ export default function ProjectsList() {
     }
   }, [isStudent, studentProjects, navigate]);
 
-  useEffect(() => {
-    setSelectedBatch(null);
-  }, [kind]);
-
   const { data: batches, isLoading } = useQuery({
     queryKey: ['batches', 'all', 'projects', kind],
     queryFn: async () => (await api.get('/batches', { params: { pageSize: 200, ...(kind === 'INTERN' ? { hasInterns: 'true' } : {}) } })).data,
-    enabled: !isStudent,
+    enabled: !isStudent && !!fixedKind,
   });
 
   if (isStudent) {
@@ -66,24 +64,23 @@ export default function ProjectsList() {
     );
   }
 
-  const tabs = isFaculty ? ['Intern Projects'] : ['Student Projects', 'Intern Projects'];
-  const activeTab = kind === 'INTERN' ? 'Intern Projects' : 'Student Projects';
+  if (!fixedKind) return null;
+
+  const label = kind === 'INTERN' ? 'Intern Projects' : 'Student Projects';
 
   if (selectedBatch) {
-    return <BatchProjectsList batch={selectedBatch} kind={kind} onBack={() => setSelectedBatch(null)} />;
+    return (
+      <BatchProjectsList
+        batch={selectedBatch}
+        kind={kind}
+        onBack={() => setSelectedBatch(null)}
+      />
+    );
   }
 
   return (
     <div>
-      <PageHeader
-        title="Projects"
-        subtitle={kind === 'INTERN' ? 'Intern projects by batch.' : 'Student projects by batch.'}
-      />
-      <TabBar
-        tabs={tabs}
-        active={activeTab}
-        onChange={(tab) => setKind(tab === 'Intern Projects' ? 'INTERN' : 'STUDENT')}
-      />
+      <PageHeader title={label} subtitle={kind === 'INTERN' ? 'Intern-only projects by batch — separate from student capstone projects.' : 'Student capstone projects by batch — separate from intern projects.'} />
       <Table
         loading={isLoading}
         rows={batches?.items ?? []}
@@ -146,10 +143,10 @@ function BatchProjectsList({
 
   return (
     <div>
-      <button type="button" className="mb-2 text-sm text-brand-ink hover:underline" onClick={onBack}>&larr; All Batches</button>
+      <button type="button" className="mb-2 text-sm text-brand-ink hover:underline" onClick={onBack}>&larr; {label}</button>
       <PageHeader
         title={`${label} — ${batch.name}`}
-        subtitle="Projects, groups and grading for this batch."
+        subtitle={kind === 'INTERN' ? 'Only intern projects for this batch are shown here.' : 'Only student capstone projects for this batch are shown here.'}
         actions={canCreate && !facultyBlockedFromStudent && (
           <button type="button" className="btn-primary" onClick={() => setCreateOpen(true)}>+ New Project</button>
         )}
@@ -158,8 +155,10 @@ function BatchProjectsList({
         loading={isLoading}
         rows={projects ?? []}
         keyFn={(r: any) => r.id}
+        emptyText={`No ${kind === 'INTERN' ? 'intern' : 'student'} projects in this batch yet.`}
         columns={[
           { header: 'Project', cell: (r: any) => <button type="button" className="text-brand-ink hover:underline font-medium" onClick={() => navigate(`/projects/${r.id}`)}>{r.name}</button> },
+          { header: 'Type', cell: () => <Badge tone={kind === 'INTERN' ? 'blue' : 'slate'}>{kind === 'INTERN' ? 'Intern' : 'Student'}</Badge> },
           { header: 'Groups', cell: (r: any) => r._count.groups },
           { header: 'Deadline', cell: (r: any) => (r.deadline ? new Date(r.deadline).toLocaleDateString() : '-') },
           { header: 'Ranking', cell: (r: any) => (r.gradingOpen ? 'Open' : 'Closed') },

@@ -49,6 +49,12 @@ projectsRouter.get(
   asyncHandler(async (req, res) => {
     const batchId = req.query.batchId as string | undefined;
     const kind = req.query.kind as ProjectKind | undefined;
+    const isStaff = (ROLE_GROUPS.STAFF as RoleName[]).includes(req.auth!.role);
+
+    if (batchId && isStaff && kind !== ProjectKind.STUDENT && kind !== ProjectKind.INTERN) {
+      throw ApiError.badRequest('Query param kind=STUDENT or kind=INTERN is required when listing batch projects');
+    }
+
     const where: Record<string, unknown> = {
       ...(batchId ? { batchId } : {}),
       ...(kind === ProjectKind.STUDENT || kind === ProjectKind.INTERN ? { kind } : {}),
