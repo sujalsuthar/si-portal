@@ -169,6 +169,7 @@ function StaffBehaviourView() {
             selectedLabel={studentLabel}
             enabled={recordOpen}
             studentType={studentType}
+            batchId={batchFilter || undefined}
             onSelect={(id, label) => { setForm((f) => ({ ...f, studentId: id })); setStudentLabel(label); }}
             onClear={() => { setForm((f) => ({ ...f, studentId: '' })); setStudentLabel(''); }}
           />

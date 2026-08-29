@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { RoleName, BehaviourCategory, PointType, PointSource, NotificationCategory } from '@prisma/client';
+import { RoleName, BehaviourCategory, PointType, PointSource, NotificationCategory, InternStatus } from '@prisma/client';
 import { z } from 'zod';
 import { asyncHandler } from '@/utils/asyncHandler';
 import { authenticate, authorize, ROLE_GROUPS } from '@/middleware/auth';
@@ -8,7 +8,7 @@ import { ApiError } from '@/utils/apiError';
 import { recordAudit } from '@/lib/audit';
 import { assertStudentAccess, getFacultyBatchIds, getParentStudentIds } from '@/utils/scope';
 import { notify, notifyStudentParents } from '@/lib/notify';
-import { uploadEvidence, publicUploadUrl } from '@/middleware/upload';
+import { uploadEvidence, publicUploadUrl, optionalEvidenceUpload } from '@/middleware/upload';
 
 export const behaviourRouter = Router();
 behaviourRouter.use(authenticate);
@@ -45,7 +45,11 @@ behaviourRouter.get(
     if (req.auth!.role === RoleName.FACULTY && !studentId) {
       studentWhere.currentBatchId = { in: await getFacultyBatchIds(req.auth!.facultyId!) };
     }
-    if (studentType) studentWhere.internStatus = studentType === 'INTERN' ? { not: null } : null;
+    if (studentType === 'STUDENT') {
+      studentWhere.OR = [{ internStatus: null }, { internStatus: InternStatus.DEMOTED }];
+    } else if (studentType === 'INTERN') {
+      studentWhere.internStatus = { in: [InternStatus.ACTIVE, InternStatus.COMPLETED] };
+    }
     if (batchId) studentWhere.currentBatchId = batchId;
     if (Object.keys(studentWhere).length > 0) where.student = studentWhere;
 
@@ -73,9 +77,10 @@ behaviourRouter.get(
 behaviourRouter.post(
   '/',
   authorize(...ROLE_GROUPS.STAFF),
-  uploadEvidence.single('evidence'),
+  optionalEvidenceUpload,
   asyncHandler(async (req, res) => {
     const data = createSchema.parse({ ...req.body, points: Number(req.body.points) });
+    await assertStudentAccess(req.auth!, data.studentId);
     const points = data.type === PointType.NEGATIVE ? -Math.abs(data.points) : Math.abs(data.points);
     const isAdmin = ROLE_GROUPS.ADMIN_LIKE.includes(req.auth!.role);
     const file = req.file as Express.Multer.File | undefined;

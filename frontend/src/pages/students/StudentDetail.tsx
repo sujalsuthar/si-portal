@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
@@ -34,6 +34,7 @@ const EDITABLE_FIELDS = [
 
 export default function StudentDetail() {
   const params = useParams();
+  const navigate = useNavigate();
   const studentId = (params.id ?? params.studentId)!;
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -97,6 +98,11 @@ export default function StudentDetail() {
 
   return (
     <div>
+      {!isFamilyViewer && (
+        <button type="button" className="mb-2 text-sm text-brand-ink hover:underline" onClick={() => navigate(-1)}>
+          &larr; Back
+        </button>
+      )}
       <PageHeader
         title={`${student.firstName} ${student.lastName}`}
         subtitle={`${student.studentCode} · ${student.currentBatch?.name ?? 'No batch'}`}

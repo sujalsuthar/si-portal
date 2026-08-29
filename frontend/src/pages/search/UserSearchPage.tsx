@@ -197,6 +197,7 @@ export function GlobalUserSearch({ role }: { role: RoleName }) {
 }
 
 function UserHubPanel({ kind, id }: { kind: string; id: string }) {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [mentorId, setMentorId] = useState('');
@@ -354,7 +355,7 @@ function UserHubPanel({ kind, id }: { kind: string; id: string }) {
               {profile.actions?.promoteIntern && <button type="button" className="btn-primary" onClick={() => setPromoteOpen(true)}>Add to Intern</button>}
               {profile.actions?.demoteIntern && <button type="button" className="btn-danger" onClick={() => setDemoteOpen(true)}>Demote intern</button>}
               {profile.actions?.unfreezeIntern && <button type="button" className="btn-secondary" onClick={unfreezeIntern}>Unfreeze work</button>}
-              <Link to="/fees" className="btn-secondary">Fees</Link>
+              {user?.role !== 'FACULTY' && <Link to="/fees" className="btn-secondary">Fees</Link>}
             </>
           )}
           {kind === 'faculty' && (

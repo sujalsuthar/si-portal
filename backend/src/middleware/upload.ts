@@ -1,3 +1,4 @@
+import { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -76,4 +77,12 @@ export const uploadExcel = multer({
 
 export function publicUploadUrl(subdir: string, filename: string): string {
   return `/uploads/${subdir}/${filename}`;
+}
+
+/** Runs multer only for multipart requests so JSON POST bodies stay intact. */
+export function optionalEvidenceUpload(req: Request, res: Response, next: NextFunction) {
+  if (req.is('multipart/form-data')) {
+    return uploadEvidence.single('evidence')(req, res, next);
+  }
+  next();
 }

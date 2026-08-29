@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { RoleName, StudentStatus, ConsentType } from '@prisma/client';
+import { RoleName, StudentStatus, ConsentType, InternStatus } from '@prisma/client';
 import { z } from 'zod';
 import { asyncHandler } from '@/utils/asyncHandler';
 import { authenticate, authorize, ROLE_GROUPS } from '@/middleware/auth';
@@ -60,7 +60,11 @@ studentsRouter.get(
     const andClauses: Record<string, unknown>[] = [];
     if (batchId) andClauses.push({ currentBatchId: batchId });
     if (courseId) andClauses.push({ courseId });
-    if (studentType) andClauses.push({ internStatus: studentType === 'INTERN' ? { not: null } : null });
+    if (studentType === 'INTERN') {
+      andClauses.push({ internStatus: { in: [InternStatus.ACTIVE, InternStatus.COMPLETED] } });
+    } else if (studentType === 'STUDENT') {
+      andClauses.push({ OR: [{ internStatus: null }, { internStatus: InternStatus.DEMOTED }] });
+    }
     if (batchId && !status) {
       andClauses.push({ status: StudentStatus.ACTIVE, user: { isActive: true } });
     } else if (status) {

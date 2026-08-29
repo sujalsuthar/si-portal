@@ -8,21 +8,23 @@ import { getPagination, paginatedResult } from '@/utils/pagination';
 import { ApiError } from '@/utils/apiError';
 import { generateExamPaperPdf } from '@/lib/pdf';
 import { gradeLetterFor, round2 } from '@/modules/grades/grades.service';
-import { getFacultyBatchIds, getParentStudentIds } from '@/utils/scope';
+import { getFacultyBatchIds, getParentStudentIds, assertBatchAccess } from '@/utils/scope';
 import { notify, notifyStudentParents } from '@/lib/notify';
 import { recordAudit } from '@/lib/audit';
 
 export const examsRouter = Router();
 examsRouter.use(authenticate);
 
+const emptyToUndefined = (v: unknown) => (v === '' || v === null || v === undefined ? undefined : v);
+
 const examSchema = z.object({
   title: z.string().min(1),
   courseId: z.string().optional(),
-  batchId: z.string(),
+  batchId: z.string().min(1),
   subject: z.string().min(1),
-  examDate: z.coerce.date().optional(),
-  durationMinutes: z.number().int().positive().optional(),
-  passMarks: z.number().int().min(0).optional(),
+  examDate: z.preprocess(emptyToUndefined, z.coerce.date().optional()),
+  durationMinutes: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
+  passMarks: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).optional()),
 });
 
 /** Hidden exam that stores reusable paper templates — excluded from normal exam listings. */
@@ -211,6 +213,7 @@ examsRouter.post(
   authorize(...ROLE_GROUPS.STAFF),
   asyncHandler(async (req, res) => {
     const data = examSchema.parse(req.body);
+    if (req.auth!.role === RoleName.FACULTY) await assertBatchAccess(req.auth!, data.batchId);
     const exam = await prisma.exam.create({ data: { ...data, createdById: req.auth!.userId } });
     await prisma.paper.create({ data: { examId: exam.id, name: 'Paper 1', sequence: 1 } });
     await recordAudit({ entityType: 'Exam', entityId: exam.id, action: 'CREATE', actorId: req.auth!.userId, newValue: data });
