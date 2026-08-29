@@ -37,6 +37,7 @@ import { consentRouter } from '@/modules/consent/consent.controller';
 import { feedRouter } from '@/modules/feed/feed.controller';
 import { calendarRouter } from '@/modules/calendar/calendar.controller';
 import { searchRouter } from '@/modules/search/search.controller';
+import { paperLibraryRouter } from '@/modules/exams/paperLibrary.controller';
 
 export const apiRouter = Router();
 
@@ -55,6 +56,7 @@ apiRouter.use('/tasks', tasksRouter);
 apiRouter.use('/notifications', notificationsRouter);
 apiRouter.use('/questions', questionsRouter);
 apiRouter.use('/exams', examsRouter);
+apiRouter.use('/paper-library', paperLibraryRouter);
 apiRouter.use('/grades', gradesRouter);
 apiRouter.use('/behaviour', behaviourRouter);
 apiRouter.use('/presentations', presentationsRouter);

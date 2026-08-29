@@ -15,6 +15,9 @@ export default function QuestionBank() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
   const [selectedMap, setSelectedMap] = useState<Record<string, QuestionRow>>({});
   const [mcqOptions, setMcqOptions] = useState(['', '', '', '']);
   const [correctAnswer, setCorrectAnswer] = useState('');
@@ -104,6 +107,26 @@ export default function QuestionBank() {
     }
   }
 
+  async function importQuestions() {
+    if (!importFile) return toast.error('Choose an Excel file first');
+    setImporting(true);
+    try {
+      const form = new FormData();
+      form.append('file', importFile);
+      const res = await api.post('/questions/bulk-import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const { created, errors } = res.data;
+      toast.success(`${created} question(s) imported`);
+      if (errors?.length) toast.error(`${errors.length} row(s) skipped — check column headers.`, { duration: 6000 });
+      setImportOpen(false);
+      setImportFile(null);
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -112,6 +135,7 @@ export default function QuestionBank() {
         actions={
           <>
             <input className="input w-56 max-lg:w-full" placeholder="Search questions…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <button className="btn-secondary" onClick={() => setImportOpen(true)}>Import Excel</button>
             <button className="btn-primary" onClick={() => setCreateOpen(true)}>+ Add Question</button>
           </>
         }
@@ -212,6 +236,26 @@ export default function QuestionBank() {
           </div>
         </form>
       </Modal>
+
+      <Modal open={importOpen} onClose={() => { setImportOpen(false); setImportFile(null); }} title="Import Questions from Excel" wide>
+        <p className="mb-3 text-sm text-ink-muted">
+          Upload a .xlsx file with columns: <strong>Question Text</strong>, <strong>Type</strong> (MCQ or LONG_ANSWER), <strong>Marks</strong> (1 or 10),
+          optional <strong>Topic</strong>. For MCQ add <strong>Options</strong> (pipe-separated, e.g. A|B|C|D) and <strong>Correct Answer</strong>.
+          For long answers add optional <strong>Rubric</strong> (one criterion per line, e.g. Correctness|6).
+        </p>
+        <input
+          type="file"
+          accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+          className="input"
+          onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" className="btn-secondary" onClick={() => { setImportOpen(false); setImportFile(null); }}>Cancel</button>
+          <button type="button" className="btn-primary" onClick={importQuestions} disabled={importing || !importFile}>
+            {importing ? 'Importing…' : 'Import Questions'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -237,7 +281,7 @@ function BuildPaperPanel({
 
   const { data: libraryPapers, refetch: refetchLibrary } = useQuery({
     queryKey: ['paper-library'],
-    queryFn: async () => (await api.get('/exams/papers/library')).data,
+    queryFn: async () => (await api.get('/paper-library')).data,
   });
   const { data: exams, isLoading: examsLoading } = useQuery({
     queryKey: ['exams', 'all'],
@@ -255,7 +299,7 @@ function BuildPaperPanel({
     try {
       const questionIds = selectedQuestions.map((q) => q.id);
       if (mode === 'library') {
-        await api.post('/exams/papers/library', { name: paperName, questionIds });
+        await api.post('/paper-library', { name: paperName, questionIds });
         toast.success('Paper saved to library');
         setPaperName('');
         onClear();

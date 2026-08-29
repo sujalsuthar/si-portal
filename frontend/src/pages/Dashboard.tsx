@@ -313,8 +313,6 @@ function ParentDashboard({ data }: { data: any }) {
         </div>
       )}
 
-      <WeekCalendar weekSessions={data?.weekSessions ?? []} readOnly />
-
       {children.length > 0 && (
         <div>
           <h2 className="mb-3 text-sm font-semibold text-ink">Monthly Performance</h2>
