@@ -1,5 +1,5 @@
-﻿import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useEffect, useState } from 'react';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { api, apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/auth/AuthContext';
@@ -7,11 +7,18 @@ import { PageHeader, Table, Modal, Badge, Spinner } from '@/components/ui';
 
 export default function ParentsList() {
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewingId, setViewingId] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['parents', search],
-    queryFn: async () => (await api.get('/parents', { params: { search, pageSize: 50 } })).data,
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['parents', debouncedSearch],
+    queryFn: async () => (await api.get('/parents', { params: { search: debouncedSearch, pageSize: 50 } })).data,
+    placeholderData: keepPreviousData,
   });
 
   return (
@@ -20,11 +27,14 @@ export default function ParentsList() {
         title="Parents & Guardians"
         subtitle="View parent accounts and their linked students."
         actions={
-          <input className="input w-56 max-lg:w-full" placeholder="Search by parent or student name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="flex items-center gap-2 max-lg:w-full">
+            <input className="input w-56 max-lg:w-full" placeholder="Search by parent or student name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            {isFetching && !isLoading && <Spinner />}
+          </div>
         }
       />
       <Table
-        loading={isLoading}
+        loading={isLoading && !data}
         rows={data?.items ?? []}
         keyFn={(r: any) => r.id}
         columns={[

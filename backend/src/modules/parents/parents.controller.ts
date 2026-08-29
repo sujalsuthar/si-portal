@@ -9,6 +9,7 @@ import { recordAudit } from '@/lib/audit';
 import { ApiError } from '@/utils/apiError';
 import { createUserAccount } from '@/modules/users/account.service';
 import { computeStudentComposite } from '@/lib/scoring';
+import { buildParentListWhere } from '@/lib/parentSearch';
 
 export const parentsRouter = Router();
 parentsRouter.use(authenticate);
@@ -83,27 +84,7 @@ parentsRouter.get(
   asyncHandler(async (req, res) => {
     const pagination = getPagination(req);
     const search = (req.query.search as string) ?? '';
-    const where = search
-      ? {
-          OR: [
-            { firstName: { contains: search, mode: 'insensitive' as const } },
-            { lastName: { contains: search, mode: 'insensitive' as const } },
-            {
-              students: {
-                some: {
-                  student: {
-                    OR: [
-                      { firstName: { contains: search, mode: 'insensitive' as const } },
-                      { lastName: { contains: search, mode: 'insensitive' as const } },
-                      { studentCode: { contains: search, mode: 'insensitive' as const } },
-                    ],
-                  },
-                },
-              },
-            },
-          ],
-        }
-      : {};
+    const where = await buildParentListWhere(search);
     const [items, total] = await Promise.all([
       prisma.parentGuardian.findMany({
         where,
