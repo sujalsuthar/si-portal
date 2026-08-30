@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { RoleName, InternStatus, LeaveStatus, NotificationCategory } from '@prisma/client';
+import { RoleName, InternStatus, LeaveStatus, NotificationCategory, ConsentType } from '@prisma/client';
 import { z } from 'zod';
 import { asyncHandler } from '@/utils/asyncHandler';
 import { authenticate, authorize, ROLE_GROUPS } from '@/middleware/auth';
@@ -10,6 +10,7 @@ import { assertStudentAccess } from '@/utils/scope';
 import { getScoringConfig } from '@/lib/scoring';
 import { notify } from '@/lib/notify';
 import { sendExcel } from '@/lib/excel';
+import { createUserAccount } from '@/modules/users/account.service';
 
 export const internsRouter = Router();
 internsRouter.use(authenticate);
@@ -99,6 +100,88 @@ internsRouter.get(
 );
 
 const promoteSchema = z.object({ studentId: z.string(), mentorId: z.string(), effectiveDate: z.coerce.date().optional() });
+
+const registerInternSchema = z.object({
+  email: z.string().email(),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  studentCode: z.string().min(1).optional(),
+  mentorId: z.string(),
+  phone: z.string().optional(),
+  currentBatchId: z.string().optional(),
+  dataProcessingConsent: z.object({
+    granted: z.literal(true, { errorMap: () => ({ message: 'Data processing consent must be granted to register an intern' }) }),
+    noticeVersion: z.string().min(1),
+  }),
+});
+
+/** Register someone who is not already a student as a new intern (creates account + student record). */
+internsRouter.post(
+  '/register',
+  authorize(...ROLE_GROUPS.ADMIN_LIKE),
+  asyncHandler(async (req, res) => {
+    const data = registerInternSchema.parse(req.body);
+    const studentCode = data.studentCode ?? `INT-${Date.now().toString(36).toUpperCase()}`;
+
+    const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+    if (existingUser) throw ApiError.badRequest('A user with this email already exists');
+
+    const existingCode = await prisma.student.findUnique({ where: { studentCode } });
+    if (existingCode) throw ApiError.badRequest('Student code already in use');
+
+    const faculty = await prisma.faculty.findUnique({ where: { id: data.mentorId } });
+    if (!faculty) throw ApiError.notFound('Mentor not found');
+
+    const result = await prisma.$transaction(async (tx) => {
+      const { userId, tempPassword } = await createUserAccount(tx, data.email, RoleName.STUDENT);
+      const student = await tx.student.create({
+        data: {
+          userId,
+          studentCode,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          currentBatchId: data.currentBatchId,
+          mentorFacultyId: data.mentorId,
+          internStatus: InternStatus.ACTIVE,
+          internPromotedAt: new Date(),
+          joiningDate: new Date(),
+        },
+      });
+      await tx.internMentorHistory.create({
+        data: { studentId: student.id, mentorId: data.mentorId, assignedById: req.auth!.userId },
+      });
+      await tx.internStateChange.create({
+        data: { studentId: student.id, fromState: null, toState: InternStatus.ACTIVE, actorId: req.auth!.userId },
+      });
+      await tx.consentRecord.create({
+        data: {
+          studentId: student.id,
+          consentType: ConsentType.DATA_PROCESSING,
+          granted: true,
+          noticeVersion: data.dataProcessingConsent.noticeVersion,
+          grantedById: req.auth!.userId,
+        },
+      });
+      return { student, tempPassword };
+    });
+
+    await recordAudit({
+      entityType: 'Student',
+      entityId: result.student.id,
+      action: 'INTERN_REGISTER',
+      actorId: req.auth!.userId,
+      newValue: { ...data, studentCode },
+    });
+    await notify({
+      userId: result.student.userId,
+      category: NotificationCategory.GENERAL,
+      title: 'Welcome to the Intern programme',
+      message: 'Your intern account has been created. Sign in with your email to get started.',
+    });
+    res.status(201).json(result);
+  }),
+);
 
 internsRouter.post(
   '/promote',

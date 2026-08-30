@@ -9,6 +9,8 @@ import { StudentSearchPicker } from '@/components/StudentSearchPicker';
 
 const STATUS_TONE: Record<string, 'green' | 'red' | 'slate'> = { ACTIVE: 'green', DEMOTED: 'red', COMPLETED: 'slate' };
 
+type AddMode = 'existing' | 'new';
+
 export default function InternsList() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -19,11 +21,38 @@ export default function InternsList() {
   if (!isStaff && user?.role === 'STUDENT') return <StudentDevelopmentView studentId={user.profile?.id} />;
 
   const [promoteOpen, setPromoteOpen] = useState(false);
+  const [addMode, setAddMode] = useState<AddMode>('existing');
   const [studentLabel, setStudentLabel] = useState('');
   const [form, setForm] = useState({ studentId: '', mentorId: '' });
+  const [newForm, setNewForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    studentCode: '',
+    mentorId: '',
+    currentBatchId: '',
+  });
 
   const { data: interns, isLoading } = useQuery({ queryKey: ['interns'], queryFn: async () => (await api.get('/interns')).data });
-  const { data: facultyList } = useQuery({ queryKey: ['faculty', 'all'], queryFn: async () => (await api.get('/faculty', { params: { pageSize: 100 } })).data, enabled: promoteOpen });
+  const { data: facultyList } = useQuery({
+    queryKey: ['faculty', 'all'],
+    queryFn: async () => (await api.get('/faculty', { params: { pageSize: 100 } })).data,
+    enabled: promoteOpen,
+  });
+  const { data: batches } = useQuery({
+    queryKey: ['batches', 'all'],
+    queryFn: async () => (await api.get('/batches', { params: { pageSize: 100 } })).data,
+    enabled: promoteOpen && addMode === 'new',
+  });
+
+  function resetModal() {
+    setPromoteOpen(false);
+    setAddMode('existing');
+    setForm({ studentId: '', mentorId: '' });
+    setStudentLabel('');
+    setNewForm({ firstName: '', lastName: '', email: '', phone: '', studentCode: '', mentorId: '', currentBatchId: '' });
+  }
 
   async function downloadReport() {
     try {
@@ -44,9 +73,31 @@ export default function InternsList() {
     try {
       await api.post('/interns/promote', form);
       toast.success('Student added to Intern programme');
-      setPromoteOpen(false);
-      setForm({ studentId: '', mentorId: '' });
-      setStudentLabel('');
+      resetModal();
+      queryClient.invalidateQueries({ queryKey: ['interns'] });
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+    }
+  }
+
+  async function registerNew() {
+    if (!newForm.firstName.trim() || !newForm.lastName.trim() || !newForm.email.trim() || !newForm.mentorId) {
+      return toast.error('First name, last name, email, and mentor are required');
+    }
+    try {
+      const res = await api.post('/interns/register', {
+        firstName: newForm.firstName.trim(),
+        lastName: newForm.lastName.trim(),
+        email: newForm.email.trim(),
+        phone: newForm.phone.trim() || undefined,
+        studentCode: newForm.studentCode.trim() || undefined,
+        mentorId: newForm.mentorId,
+        currentBatchId: newForm.currentBatchId || undefined,
+        dataProcessingConsent: { granted: true, noticeVersion: 'v1' },
+      });
+      const temp = res.data?.tempPassword;
+      toast.success(temp ? `Intern registered. Temporary password: ${temp}` : 'Intern registered successfully');
+      resetModal();
       queryClient.invalidateQueries({ queryKey: ['interns'] });
     } catch (err) {
       toast.error(apiErrorMessage(err));
@@ -77,24 +128,86 @@ export default function InternsList() {
           { header: 'Work Status', cell: (r: any) => (r.internFrozen ? <Badge tone="red">Paused - Review Pending</Badge> : <Badge tone="green">Active</Badge>) },
         ]}
       />
-      <Modal open={promoteOpen} onClose={() => setPromoteOpen(false)} title="Add to Intern">
-        <div className="space-y-3">
-          <StudentSearchPicker
-            studentId={form.studentId}
-            selectedLabel={studentLabel}
-            enabled={promoteOpen}
-            onSelect={(id, label) => { setForm((f) => ({ ...f, studentId: id })); setStudentLabel(label); }}
-            onClear={() => { setForm((f) => ({ ...f, studentId: '' })); setStudentLabel(''); }}
-          />
-          <label className="block">
-            <span className="label">Mentor</span>
-            <select className="input" value={form.mentorId} onChange={(e) => setForm((f) => ({ ...f, mentorId: e.target.value }))}>
-              <option value="">Select…</option>
-              {facultyList?.items?.map((f: any) => <option key={f.id} value={f.id}>{f.firstName} {f.lastName}</option>)}
-            </select>
-          </label>
-          <div className="flex justify-end"><button className="btn-primary" onClick={promote}>Promote</button></div>
+      <Modal open={promoteOpen} onClose={resetModal} title="Add to Intern">
+        <div className="mb-4 flex gap-1 rounded-lg bg-surface-muted p-1">
+          <button
+            type="button"
+            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${addMode === 'existing' ? 'bg-brand-600 text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+            onClick={() => setAddMode('existing')}
+          >
+            Existing student
+          </button>
+          <button
+            type="button"
+            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${addMode === 'new' ? 'bg-brand-600 text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+            onClick={() => setAddMode('new')}
+          >
+            New person
+          </button>
         </div>
+
+        {addMode === 'existing' ? (
+          <div className="space-y-3">
+            <StudentSearchPicker
+              studentId={form.studentId}
+              selectedLabel={studentLabel}
+              enabled={promoteOpen}
+              onSelect={(id, label) => { setForm((f) => ({ ...f, studentId: id })); setStudentLabel(label); }}
+              onClear={() => { setForm((f) => ({ ...f, studentId: '' })); setStudentLabel(''); }}
+            />
+            <label className="block">
+              <span className="label">Mentor</span>
+              <select className="input" value={form.mentorId} onChange={(e) => setForm((f) => ({ ...f, mentorId: e.target.value }))}>
+                <option value="">Select…</option>
+                {facultyList?.items?.map((f: any) => <option key={f.id} value={f.id}>{f.firstName} {f.lastName}</option>)}
+              </select>
+            </label>
+            <div className="flex justify-end"><button className="btn-primary" onClick={promote}>Promote</button></div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="form-grid">
+              <label className="block">
+                <span className="label">First name</span>
+                <input className="input" value={newForm.firstName} onChange={(e) => setNewForm((f) => ({ ...f, firstName: e.target.value }))} />
+              </label>
+              <label className="block">
+                <span className="label">Last name</span>
+                <input className="input" value={newForm.lastName} onChange={(e) => setNewForm((f) => ({ ...f, lastName: e.target.value }))} />
+              </label>
+            </div>
+            <label className="block">
+              <span className="label">Email</span>
+              <input className="input" type="email" value={newForm.email} onChange={(e) => setNewForm((f) => ({ ...f, email: e.target.value }))} placeholder="intern@example.com" />
+            </label>
+            <div className="form-grid">
+              <label className="block">
+                <span className="label">Phone (optional)</span>
+                <input className="input" value={newForm.phone} onChange={(e) => setNewForm((f) => ({ ...f, phone: e.target.value }))} />
+              </label>
+              <label className="block">
+                <span className="label">Student code (optional)</span>
+                <input className="input" value={newForm.studentCode} onChange={(e) => setNewForm((f) => ({ ...f, studentCode: e.target.value }))} placeholder="Auto-generated if blank" />
+              </label>
+            </div>
+            <label className="block">
+              <span className="label">Batch (optional)</span>
+              <select className="input" value={newForm.currentBatchId} onChange={(e) => setNewForm((f) => ({ ...f, currentBatchId: e.target.value }))}>
+                <option value="">None</option>
+                {batches?.items?.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="label">Mentor</span>
+              <select className="input" value={newForm.mentorId} onChange={(e) => setNewForm((f) => ({ ...f, mentorId: e.target.value }))}>
+                <option value="">Select…</option>
+                {facultyList?.items?.map((f: any) => <option key={f.id} value={f.id}>{f.firstName} {f.lastName}</option>)}
+              </select>
+            </label>
+            <p className="text-xs text-ink-muted">A portal account will be created for this person. Data processing consent is recorded on registration.</p>
+            <div className="flex justify-end"><button className="btn-primary" onClick={registerNew}>Register intern</button></div>
+          </div>
+        )}
       </Modal>
     </div>
   );

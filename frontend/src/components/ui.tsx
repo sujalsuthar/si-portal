@@ -7,10 +7,10 @@ const ActionMenuContext = createContext<{ close: () => void }>({ close: () => {}
 
 export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
   return (
-    <div className="page-header mb-5 flex flex-wrap items-start justify-between gap-3">
+    <div className="page-header mb-6 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
-        <h1 className="text-xl font-semibold text-ink max-lg:break-words md:text-2xl">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-ink-muted max-lg:break-words">{subtitle}</p>}
+        <h1 className="text-xl font-bold tracking-tight text-ink max-lg:break-words md:text-2xl">{title}</h1>
+        {subtitle && <p className="mt-1.5 text-sm leading-relaxed text-ink-muted max-lg:break-words">{subtitle}</p>}
       </div>
       {actions && (
         <div className="page-header-actions flex shrink-0 flex-wrap items-center gap-2">

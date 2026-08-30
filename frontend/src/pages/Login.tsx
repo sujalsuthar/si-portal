@@ -4,8 +4,6 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/auth/AuthContext';
 import { apiErrorMessage } from '@/lib/api';
 
-const ROLE_CHIPS = ['Student', 'Parent', 'Team', 'Admin'] as const;
-
 export default function Login() {
   const { user, login, verifyMfaLogin } = useAuth();
   const navigate = useNavigate();
@@ -65,17 +63,6 @@ export default function Login() {
             S
           </div>
           <h1 className="text-3xl font-bold tracking-tight">SI Portal</h1>
-          <p className="mt-2 text-sm text-brand-100">One connected system from admissions to certification.</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {ROLE_CHIPS.map((chip) => (
-              <span
-                key={chip}
-                className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-medium text-white/95"
-              >
-                {chip}
-              </span>
-            ))}
-          </div>
         </div>
 
         {!mfaToken ? (

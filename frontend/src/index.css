@@ -25,6 +25,13 @@
      theme - orange needs to go dark for that role in light mode, blue needs to go light in dark
      mode, which is the opposite lightness direction from the badge-chip scale above. */
   --color-brand-ink: 184 75 12;
+
+  /* Light-mode sidebar — warm orange brand shell */
+  --color-sidebar-bg: 184 75 12;
+  --color-sidebar-border: 138 56 9;
+  --color-sidebar-text: 255 246 236;
+  --color-sidebar-muted: 253 210 165;
+  --color-sidebar-hover: 229 96 17;
 }
 
 /* Dark theme - near-black surfaces, blue as the primary/brand accent. Applied via a `.dark`
@@ -49,6 +56,13 @@
   --color-brand-800: 17 47 85;
   --color-brand-900: 11 32 56;
   --color-brand-ink: 143 171 212;
+
+  /* Dark-mode sidebar — navy shell (unchanged) */
+  --color-sidebar-bg: 15 23 42;
+  --color-sidebar-border: 30 41 59;
+  --color-sidebar-text: 226 232 240;
+  --color-sidebar-muted: 100 116 139;
+  --color-sidebar-hover: 30 41 59;
 }
 
 html, body, #root {
@@ -86,9 +100,13 @@ body {
 }
 
 .card {
-  @apply rounded-xl border shadow-sm;
+  @apply rounded-xl border shadow-sm transition-shadow;
   background-color: rgb(var(--color-surface));
   border-color: rgb(var(--color-border));
+}
+
+.card:hover {
+  @apply shadow-md;
 }
 
 .page-content {
@@ -97,6 +115,40 @@ body {
 
 .page-header {
   @apply border-b border-edge pb-4;
+}
+
+.app-sidebar {
+  background-color: rgb(var(--color-sidebar-bg));
+  color: rgb(var(--color-sidebar-text));
+}
+
+.app-sidebar-header {
+  border-bottom: 1px solid rgb(var(--color-sidebar-border));
+}
+
+.app-sidebar-footer {
+  border-top: 1px solid rgb(var(--color-sidebar-border));
+}
+
+.app-sidebar-group-label {
+  color: rgb(var(--color-sidebar-muted));
+}
+
+.app-sidebar-toggle {
+  color: rgb(var(--color-sidebar-muted));
+}
+
+.app-sidebar-toggle:hover {
+  color: rgb(var(--color-sidebar-text));
+}
+
+.app-sidebar-close {
+  color: rgb(var(--color-sidebar-muted));
+}
+
+.app-sidebar-close:hover {
+  background-color: rgb(var(--color-sidebar-hover) / 0.6);
+  color: rgb(var(--color-sidebar-text));
 }
 
 .page-header-actions {

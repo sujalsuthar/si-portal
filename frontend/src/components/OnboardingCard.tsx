@@ -41,7 +41,7 @@ const TIPS: Record<RoleName, string[]> = {
 };
 
 export default function OnboardingCard({ role, userId }: { role: RoleName; userId: string }) {
-  const key = `si_onboarding_done_${userId}_${role}`;
+  const key = `si_onboarding_done_${userId}`;
   const [done, setDone] = useState(() => {
     try {
       return localStorage.getItem(key) === '1';
